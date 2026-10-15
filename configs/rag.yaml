@@ -1,0 +1,9 @@
+manifest: knowledge/source_manifest.csv
+source_root: knowledge/source_docs
+chunks_path: data/vectorstore/chunks.json
+index_path: data/vectorstore/tfidf.joblib
+provider: tfidf
+chunk_size: 900
+chunk_overlap: 120
+top_k: 4
+# Sentence-transformer/FAISS providers may be added later; model downloads must be explicit.

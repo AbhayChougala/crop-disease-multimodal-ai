@@ -1,0 +1,2 @@
+document_id,title,organization,url,publication_date,crop,disease,source_type,license_or_usage_note,local_file_path,version_hash
+SAMPLE_001,Locally authored retrieval fixture,Project test suite,,,Tomato,Early Blight,text,Synthetic test fixture - not agricultural guidance,sample_leaf_care.txt,

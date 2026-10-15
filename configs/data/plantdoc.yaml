@@ -1,0 +1,10 @@
+dataset: plantdoc
+root: data/raw/plantdoc_classification_export
+output_manifest: data/manifests/plantdoc.csv
+seed: 42
+split:
+  train: 0.70
+  validation: 0.15
+taxonomy: {}
+# Detection-oriented PlantDoc annotations must be converted explicitly; this config does not
+# treat bounding boxes as image-level labels automatically.

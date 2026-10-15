@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from crop_ai.rag.contracts import RetrievedPassage
+
 
 class MockLLMProvider:
     """Credential-free provider that avoids presenting agricultural claims as grounded facts."""
@@ -10,8 +12,9 @@ class MockLLMProvider:
         self,
         evidence: dict[str, Any],
         question: str | None = None,
+        passages: list[RetrievedPassage] | None = None,
     ) -> dict[str, Any]:
-        disease = evidence.get("disease", "unknown condition")
+        disease = evidence.get("predicted_disease") or evidence.get("disease", "unknown condition")
         confidence = float(evidence.get("confidence", 0))
         uncertainty = (
             " The placeholder prediction is below the configured confidence threshold."
@@ -39,4 +42,5 @@ class MockLLMProvider:
             ),
             "sources": [],
             "is_mock": True,
+            "status": "demo",
         }

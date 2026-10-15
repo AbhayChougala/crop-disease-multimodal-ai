@@ -27,6 +27,12 @@ artifacts/models/*
 artifacts/runtime/*
 !artifacts/models/.gitkeep
 !artifacts/runtime/.gitkeep
+research/results/*
+research/plots/*
+research/tables/*
+!research/results/.gitkeep
+!research/plots/.gitkeep
+!research/tables/.gitkeep
 *.pt
 *.pth
 *.ckpt

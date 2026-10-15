@@ -91,5 +91,16 @@ footer { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1.1rem,4vw,4.5re
 .study-grid article > span { color: var(--green); font-weight: 800; }
 .study-grid article small { color: var(--rust); }
 .prose { font-size: 1.05rem; line-height: 1.75; }
+.suggestion-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1rem; }
+.suggestion-row button { border: 1px solid var(--line); background: #edf2e7; color: var(--green-dark); border-radius: 999px; padding: .55rem .8rem; cursor: pointer; }
+.conversation { min-height: 150px; max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: .7rem; padding: 1rem; background: #f5f6ef; border-radius: 14px; }
+.message { max-width: 84%; padding: .75rem .9rem; border-radius: 14px; }
+.message p { margin: .25rem 0 0; line-height: 1.5; }
+.message.user { align-self: flex-end; background: var(--green-dark); color: white; }
+.message.assistant { align-self: flex-start; background: white; border: 1px solid var(--line); }
+.chat-form { display: grid; grid-template-columns: 1fr auto; gap: .7rem; margin-top: 1rem; }
+.chat-form input { min-width: 0; padding: .8rem 1rem; border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); }
+.chat-error { color: #8d3014; margin: .8rem 0 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @media (max-width: 880px) { .navbar { height: auto; align-items: flex-start; } .brand span:last-child { display: none; } nav { gap: .75rem; flex-wrap: wrap; justify-content: flex-end; } nav a { font-size: .8rem; } .hero, .upload-layout, .camera-layout { grid-template-columns: 1fr; } .hero { min-height: auto; } .feature-grid, .study-grid, .metric-grid { grid-template-columns: 1fr; } .camera-stage { min-height: 380px; } }
 @media (max-width: 520px) { .navbar { position: static; } nav a:first-child, nav a:last-child { display: none; } .dropzone { min-height: 310px; } .demo-banner, footer { flex-direction: column; align-items: flex-start; } }

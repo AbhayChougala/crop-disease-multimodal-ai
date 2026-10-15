@@ -1,0 +1,1 @@
+This locally authored sample exists only to test retrieval software. It is not authoritative agricultural guidance. Clear images with one visible leaf are useful when testing an image-analysis pipeline. An uncertain software prediction should be reviewed by a qualified agricultural expert before management decisions are made.

@@ -1,0 +1,9 @@
+dataset: plantvillage
+root: data/raw/plantvillage
+output_manifest: data/manifests/plantvillage.csv
+seed: 42
+split:
+  train: 0.70
+  validation: 0.15
+# Add taxonomy mappings only when source folder names do not use crop__disease.
+taxonomy: {}

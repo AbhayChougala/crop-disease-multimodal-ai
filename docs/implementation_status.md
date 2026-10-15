@@ -4,29 +4,25 @@ Last updated: 2026-10-15
 
 ## Implemented
 
-- Project rules, safe ignore patterns, and environment template
-- FastAPI application and typed response schemas
-- Health and system-capabilities endpoints
-- Upload validation, preprocessing preview, and mock diagnosis
-- Deterministic mock classifier with explicit `is_mock=true`
-- Modular OpenCV preprocessing and heuristic leaf mask
-- Independent experimental lesion color mask and affected-area calculation
-- Data-URL artifacts and measured stage timings
-- Mock advisory and chat responses that avoid unsupported agricultural claims
-- Feedback persistence in ignored runtime storage
-- Realtime WebSocket inference interface
-- React upload, results, research, about, and live-camera pages
-- Unit/integration test suite
+- Three torchvision classifier factories, training/evaluation CLIs, safe checkpoints, top-k,
+  calibration metadata, abstention, and one-time runtime loading
+- Manifest preparation/validation, group-aware splitting, fingerprints, duplicate/leakage reports
+- OpenCV stages, class-specific Grad-CAM, U-Net training/inference, mask metrics, and explicit
+  experimental/validated severity states
+- Typed multimodal evidence with model, image, preprocessing, uncertainty, and provenance fields
+- Local source ingestion, chunking, TF-IDF persistence/search, citations, and retrieval evaluation
+- Mock, OpenAI Responses API, and Ollama LLM providers with grounded citation validation
+- Diagnosis sessions, context-aware chat, knowledge search, WebSocket inference, and capability APIs
+- React diagnosis artifacts/chat, live camera, and API-backed research protocol/results page
+- Experiment metadata and genuine-result aggregation that leaves missing work pending
+- Unit, integration, ML smoke, lint, and frontend production-build validation
 
-## Not implemented yet
+## External-input or follow-up work
 
-- Real checkpoint loading or validated classifier output
-- Training/evaluation pipeline and dataset manifests
-- Grad-CAM generation
-- Agricultural document ingestion, embeddings, or retrieval
-- OpenAI/local LLM providers
-- Diagnosis session persistence for context-aware chat
-- Validated experimental results or metrics
+- No agricultural dataset, trained weights, validated lesion masks, authoritative knowledge corpus,
+  provider credentials, or genuine research metrics are included.
+- Sentence-transformer/FAISS semantic retrieval, real-provider streaming, durable session storage, and
+  direct orchestration/plotting of every controlled experiment remain follow-up work.
 
 ## Scientific status
 
@@ -35,9 +31,10 @@ The current system is a software prototype in demo mode. Mock predictions must n
 ## Validation on 2026-10-15
 
 - `ruff check .`: passed
-- `pytest`: passed (11 tests)
-- `npm run build`: passed
-- Live health and capabilities requests: passed
-- Live multipart diagnosis request: passed in mock mode
-- Live realtime WebSocket request: passed in mock mode
-- Pixel-level browser QA: not completed because the in-app preview connection failed during setup; the frontend was verified by TypeScript and production build checks instead
+- `pytest -q`: passed (24 passed, 3 skipped because optional torch/scikit-learn are absent from the app venv)
+- `PYTHONPATH=.:src python3 scripts/ml_smoke_test.py`: passed with global PyTorch 2.6 CPU
+- `PYTHONPATH=.:src python3 scripts/training_smoke_test.py`: passed one CPU epoch; synthetic metrics were discarded
+- `ruff check .`: passed
+- `npm --prefix frontend run build`: passed
+- The integration suite covers health, capabilities, multipart diagnosis, context chat, and WebSocket
+  inference in explicit demo mode.

@@ -7,8 +7,13 @@ export interface DiagnosisResponse {
   session_id: string;
   is_mock: boolean;
   prediction: {
-    crop: string;
-    disease: string;
+    crop: string | null;
+    disease: string | null;
+    architecture: string | null;
+    checkpoint_id: string | null;
+    inference_mode: string;
+    abstained: boolean;
+    abstention_reason: string | null;
     confidence: number;
     top_k: TopPrediction[];
   };
@@ -16,18 +21,23 @@ export interface DiagnosisResponse {
     method: string;
     affected_area_percent: number | null;
     category: string;
+    status: string;
     is_experimental: boolean;
+    warning: string | null;
   };
   artifacts: {
     original_image: string;
     preprocessed_image: string;
     leaf_mask: string | null;
     lesion_mask: string | null;
+    leaf_isolated: string | null;
+    lesion_overlay: string | null;
     gradcam: string | null;
   };
   evidence: {
-    segmentation_valid: boolean;
     model_id: string;
+    model_mode: "DEMO" | "REAL" | "UNAVAILABLE";
+    uncertainty_flags: string[];
   };
   advisory: {
     summary: string;

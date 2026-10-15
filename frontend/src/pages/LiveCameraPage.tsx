@@ -75,7 +75,7 @@ export function LiveCameraPage() {
         <div className="camera-stage">
           <video ref={videoRef} playsInline muted />
           {!running && <div className="camera-placeholder">Camera preview</div>}
-          {prediction && running && <div className="camera-overlay"><span>DEMO MODE</span><strong>{prediction.crop} · {prediction.disease}</strong><small>{(prediction.confidence * 100).toFixed(1)}% placeholder confidence</small></div>}
+          {prediction && running && <div className="camera-overlay"><span>{prediction.is_mock ? "DEMO MODE" : "REAL MODEL"}</span><strong>{prediction.crop} · {prediction.disease}</strong><small>{(prediction.confidence * 100).toFixed(1)}% {prediction.is_mock ? "placeholder confidence" : "confidence"}</small></div>}
         </div>
         <aside className="camera-controls">
           <span className="status-pill">2 FPS target</span><h2>Live telemetry</h2>

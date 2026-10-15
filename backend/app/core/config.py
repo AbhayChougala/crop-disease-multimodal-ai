@@ -28,10 +28,18 @@ class Settings(BaseSettings):
     confidence_threshold: float = Field(default=0.65, ge=0, le=1)
     cv_preprocessing_mode: Literal["raw", "standard", "segmented"] = "standard"
     severity_mode: Literal["heuristic", "disabled"] = "heuristic"
+    severity_low_max: float = Field(default=5.0, ge=0, le=100)
+    severity_moderate_max: float = Field(default=20.0, ge=0, le=100)
+    severity_high_max: float = Field(default=40.0, ge=0, le=100)
     rag_enabled: bool = False
     rag_collection: str = "crop_disease_knowledge"
+    rag_index_path: Path = Path("data/vectorstore/tfidf.joblib")
     rag_top_k: int = Field(default=4, ge=1, le=20)
-    llm_provider: Literal["mock", "openai", "local"] = "mock"
+    llm_provider: Literal["mock", "openai", "ollama", "local"] = "mock"
+    llm_model: str = ""
+    llm_api_key: str = ""
+    llm_base_url: str = ""
+    llm_timeout: float = Field(default=30.0, ge=1, le=300)
     openai_api_key: str = ""
     openai_model: str = ""
     local_llm_base_url: str = ""

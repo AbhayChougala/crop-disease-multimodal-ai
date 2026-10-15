@@ -1,4 +1,5 @@
 import type { DiagnosisResponse } from "../types/api";
+import { ChatPanel } from "./ChatPanel";
 import { DemoBanner } from "./DemoBanner";
 
 export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
@@ -6,7 +7,9 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
     ["Original", result.artifacts.original_image],
     ["Preprocessed", result.artifacts.preprocessed_image],
     ["Leaf mask", result.artifacts.leaf_mask],
+    ["Leaf isolated", result.artifacts.leaf_isolated],
     ["Experimental lesion mask", result.artifacts.lesion_mask],
+    ["Experimental lesion overlay", result.artifacts.lesion_overlay],
     ["Grad-CAM", result.artifacts.gradcam],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
@@ -15,14 +18,14 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
       {result.is_mock && <DemoBanner />}
       <div className="metric-grid">
         <article className="metric-card">
-          <span>Mock prediction</span>
-          <strong>{result.prediction.disease}</strong>
-          <small>{result.prediction.crop}</small>
+          <span>{result.is_mock ? "Mock prediction" : "Model prediction"}</span>
+          <strong>{result.prediction.disease ?? "Abstained"}</strong>
+          <small>{result.prediction.crop ?? result.prediction.abstention_reason}</small>
         </article>
         <article className="metric-card">
-          <span>Placeholder confidence</span>
+          <span>{result.is_mock ? "Placeholder confidence" : "Confidence"}</span>
           <strong>{(result.prediction.confidence * 100).toFixed(1)}%</strong>
-          <small>{result.evidence.model_id}</small>
+          <small>{result.prediction.architecture} · {result.evidence.model_mode}</small>
         </article>
         <article className="metric-card warning-card">
           <span>Experimental severity</span>
@@ -34,6 +37,11 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
           </small>
         </article>
       </div>
+
+      <article className="panel">
+        <div className="section-heading"><div><p className="eyebrow">Classifier ranking</p><h2>Top predictions</h2></div><span className="tag">{result.evidence.model_id}</span></div>
+        <ol>{result.prediction.top_k.map((item) => <li key={item.label}>{item.label} — {(item.confidence * 100).toFixed(1)}%</li>)}</ol>
+      </article>
 
       <article className="panel">
         <div className="section-heading">
@@ -54,13 +62,14 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
       </article>
 
       <article className="panel explanation">
-        <p className="eyebrow">Mock explanation</p>
+        <p className="eyebrow">{result.advisory.is_mock ? "Mock explanation" : "Grounded explanation"}</p>
         <h2>Decision-support summary</h2>
         <p>{result.advisory.summary}</p>
         <div className="callout">{result.advisory.when_to_seek_expert_help}</div>
         {result.advisory.sources.length === 0 && (
-          <p className="muted">No sources shown because retrieval is not enabled yet.</p>
+          <p className="muted">No retrieved sources support this explanation.</p>
         )}
+        {result.advisory.sources.length > 0 && <ul>{result.advisory.sources.map((source) => <li key={source.source_id}>{source.source_id}: {source.title}</li>)}</ul>}
       </article>
 
       <article className="panel">
@@ -75,6 +84,8 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
           ))}
         </div>
       </article>
+
+      <ChatPanel sessionId={result.session_id} isMock={result.is_mock} />
 
       {result.warnings.length > 0 && (
         <article className="panel warnings">

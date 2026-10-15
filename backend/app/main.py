@@ -6,8 +6,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.routes import chat, diagnosis, feedback, health, realtime, research, system
+from backend.app.api.routes import (
+    chat,
+    diagnosis,
+    feedback,
+    health,
+    knowledge,
+    realtime,
+    research,
+    system,
+)
 from backend.app.core.config import get_settings
+from backend.app.services.model_manager import get_model_manager
 from crop_ai.device import get_device_info
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -18,11 +28,12 @@ logger = logging.getLogger("crop-disease-api")
 async def lifespan(_: FastAPI):
     settings = get_settings()
     device = get_device_info()
+    runtime = get_model_manager().status
     logger.info(
         "startup device=%s model_mode=%s model_loaded=%s rag_enabled=%s llm_provider=%s",
         device.selected,
         settings.model_mode,
-        settings.model_mode == "real" and settings.model_path.exists(),
+        runtime.loaded,
         settings.rag_enabled,
         settings.llm_provider,
     )
@@ -49,6 +60,7 @@ routes = (
     system.router,
     diagnosis.router,
     chat.router,
+    knowledge.router,
     feedback.router,
     research.router,
 )

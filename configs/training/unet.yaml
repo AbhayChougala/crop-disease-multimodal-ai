@@ -1,0 +1,14 @@
+experiment_name: lesion_unet
+manifest: data/manifests/lesion_masks.csv
+image_root: data/raw/lesion_segmentation
+output_dir: artifacts/models/lesion_unet
+image_size: 256
+base_channels: 32
+batch_size: 8
+epochs: 30
+learning_rate: 0.0005
+dice_weight: 0.5
+threshold: 0.5
+mixed_precision: true
+seed: 42
+# A saved model must remain validated=false until evaluated against held-out ground-truth masks.

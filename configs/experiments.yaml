@@ -1,0 +1,26 @@
+seed: 42
+results_root: research/results/raw
+summary_path: research/results/summary.json
+table_path: research/tables/experiment_summary.csv
+experiments:
+  - id: model_comparison
+    title: Model comparison
+    protocol: ResNet50 vs EfficientNet-B0 vs MobileNetV2 on identical saved splits.
+  - id: preprocessing_ablation
+    title: OpenCV preprocessing ablation
+    protocol: Raw/resized vs standard preprocessing vs leaf-isolated input.
+  - id: cross_domain
+    title: Cross-domain robustness
+    protocol: Controlled training images vs mapped overlapping field-image classes.
+  - id: explainability
+    title: Explainability review
+    protocol: Correct and failed predictions; heatmaps are not treated as faithfulness proof.
+  - id: severity_segmentation
+    title: Severity segmentation
+    protocol: Dice, IoU, and severity error against held-out annotated masks only.
+  - id: llm_grounding
+    title: LLM grounding
+    protocol: Fixed questions comparing no retrieval against RAG with manual review.
+  - id: runtime
+    title: Runtime performance
+    protocol: Measured preprocessing, classification, Grad-CAM, full, and camera latency.

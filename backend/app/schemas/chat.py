@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    sources: list[SourceReference] = []
+    sources: list[SourceReference] = Field(default_factory=list)
     warnings: list[str]
     is_mock: bool
+    status: str = "available"

@@ -31,7 +31,7 @@ export function DiagnosePage() {
       <section className="page-intro">
         <p className="eyebrow">Static image workflow</p>
         <h1>Inspect a leaf image</h1>
-        <p>Upload a clear JPEG, PNG, or WebP image. This build runs a real OpenCV pipeline and an explicitly mocked classifier.</p>
+        <p>Upload a clear JPEG, PNG, or WebP image. The API reports whether a trained checkpoint or explicit demo classifier produced the result.</p>
       </section>
       <section className="upload-layout">
         <label className={`dropzone ${preview ? "has-image" : ""}`}>
@@ -39,9 +39,9 @@ export function DiagnosePage() {
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
         </label>
         <aside className="upload-actions">
-          <span className="status-pill">Demo model active</span>
+          <span className="status-pill">Runtime mode reported with result</span>
           <h2>Analysis pipeline</h2>
-          <ol><li>Validate and decode</li><li>Preprocess and isolate leaf</li><li>Mock classification</li><li>Experimental severity</li><li>Mock advisory</li></ol>
+          <ol><li>Validate and decode</li><li>Preprocess and isolate leaf</li><li>Configured classification</li><li>Severity status check</li><li>Grounded or demo advisory</li></ol>
           <button className="button primary" disabled={!file || loading} onClick={analyze}>{loading ? "Analyzing…" : "Run analysis"}</button>
           {error && <p className="error" role="alert">{error}</p>}
         </aside>

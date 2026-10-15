@@ -1,1 +1,1 @@
-source_id,title,organization,document_path,source_url,publication_date,crop,disease,license_or_usage_note
+document_id,title,organization,url,publication_date,crop,disease,source_type,license_or_usage_note,local_file_path,version_hash

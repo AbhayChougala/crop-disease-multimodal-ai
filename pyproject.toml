@@ -32,6 +32,11 @@ ml = [
   "scikit-learn>=1.6,<2",
   "matplotlib>=3.10,<4",
   "PyYAML>=6,<7",
+  "tqdm>=4.67,<5",
+]
+llm = [
+  "openai>=2,<3",
+  "pypdf>=6,<7",
 ]
 
 [tool.setuptools.packages.find]
@@ -50,3 +55,6 @@ exclude = ["Crop_Disease_Diagram_Pack"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/ml/*.py" = ["E402"]

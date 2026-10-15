@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 
 
@@ -24,7 +25,15 @@ def get_device_info() -> DeviceInfo:
     cuda_available = bool(torch.cuda.is_available())
     mps_backend = getattr(torch.backends, "mps", None)
     mps_available = bool(mps_backend and mps_backend.is_available())
-    selected = "cuda" if cuda_available else "mps" if mps_available else "cpu"
+    requested = os.getenv("CROP_AI_DEVICE", "auto").lower()
+    if requested not in {"auto", "cpu", "mps", "cuda"}:
+        raise ValueError("CROP_AI_DEVICE must be auto, cpu, mps, or cuda.")
+    automatic = "cuda" if cuda_available else "mps" if mps_available else "cpu"
+    if requested == "cuda" and not cuda_available:
+        raise RuntimeError("CROP_AI_DEVICE=cuda was requested but CUDA is unavailable.")
+    if requested == "mps" and not mps_available:
+        raise RuntimeError("CROP_AI_DEVICE=mps was requested but MPS is unavailable.")
+    selected = automatic if requested == "auto" else requested
     return DeviceInfo(selected, cuda_available, mps_available, True)
 
 

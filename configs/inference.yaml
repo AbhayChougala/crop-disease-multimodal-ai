@@ -1,0 +1,9 @@
+model_mode: mock
+checkpoint: artifacts/models/best_model.pt
+architecture: efficientnet_b0
+confidence_threshold: 0.65
+preprocessing_mode: standard
+top_k: 5
+max_upload_mb: 10
+max_pixels: 40000000
+# Runtime environment variables override these documented defaults.

@@ -21,3 +21,18 @@ export async function diagnoseImage(file: File | Blob): Promise<DiagnosisRespons
   if (!response.ok) throw new Error(await parseError(response));
   return (await response.json()) as DiagnosisResponse;
 }
+
+export async function sendChatMessage(sessionId: string, message: string) {
+  const response = await fetch(`${API_BASE}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as {
+    answer: string;
+    sources: Array<{ source_id: string; title: string; url?: string }>;
+    warnings: string[];
+    is_mock: boolean;
+  };
+}

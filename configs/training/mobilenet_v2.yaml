@@ -1,0 +1,33 @@
+experiment_name: mobilenet_v2_baseline
+architecture: mobilenet_v2
+manifest: data/manifests/plantvillage.csv
+image_root: data/raw/plantvillage
+output_dir: artifacts/models
+dataset_id: plantvillage_local
+image_size: 224
+pretrained: true
+dropout: 0.2
+freeze_backbone: true
+unfreeze_blocks: 2
+batch_size: 32
+epochs: 20
+learning_rate: 0.001
+optimizer: adamw
+weight_decay: 0.0001
+scheduler: cosine
+patience: 5
+loss: cross_entropy
+label_smoothing: 0.05
+class_weighted_loss: false
+class_balanced_sampling: false
+gradient_accumulation: 1
+gradient_clip_norm: 1.0
+mixed_precision: true
+workers: 0
+seed: 42
+augmentations:
+  horizontal_flip: true
+  vertical_flip: false
+  rotation_degrees: 15
+  color_jitter: 0.1
+  gaussian_blur_probability: 0.0

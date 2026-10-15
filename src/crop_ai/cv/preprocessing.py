@@ -17,6 +17,8 @@ class PreprocessingResult:
     image: np.ndarray
     leaf: LeafSegmentation
     lesion_mask: np.ndarray
+    leaf_isolated: np.ndarray
+    lesion_overlay: np.ndarray
     warnings: tuple[str, ...]
 
 
@@ -57,4 +59,16 @@ def preprocess_image(
     )
     if mode == "segmented" and leaf.is_valid:
         processed = cv2.bitwise_and(processed, processed, mask=leaf.mask)
-    return PreprocessingResult(processed, leaf, lesion_mask, tuple(warnings))
+    leaf_isolated = cv2.bitwise_and(processed, processed, mask=leaf.mask)
+    lesion_overlay = processed.copy()
+    lesion_overlay[lesion_mask > 0] = (
+        0.45 * lesion_overlay[lesion_mask > 0] + 0.55 * np.array([30, 70, 220])
+    ).astype(np.uint8)
+    return PreprocessingResult(
+        processed,
+        leaf,
+        lesion_mask,
+        leaf_isolated,
+        lesion_overlay,
+        tuple(warnings),
+    )
