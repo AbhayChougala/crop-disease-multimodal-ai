@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from backend.app.core.config import PROJECT_ROOT, get_settings
+from app.core.config import PROJECT_ROOT, get_settings
 from crop_ai.rag.contracts import RetrievedPassage, RetrieverFilters
 
 

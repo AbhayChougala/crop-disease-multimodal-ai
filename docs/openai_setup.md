@@ -1,5 +1,7 @@
 # OpenAI provider setup
 
+Run the commands below from `backend/` with its virtual environment active.
+
 Install the LLM extra and place credentials only in the ignored `.env` file:
 
 ```bash

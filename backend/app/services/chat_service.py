@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import asdict
 from typing import Any
 
-from backend.app.core.config import get_settings
-from backend.app.schemas.chat import ChatCitation, ChatResponse, GenerationMetadata
-from backend.app.services.knowledge_service import get_knowledge_service
-from backend.app.services.llm_service import get_llm_provider
-from backend.app.services.session_store import ChatSession, session_store
+from app.core.config import get_settings
+from app.schemas.chat import ChatCitation, ChatResponse, GenerationMetadata
+from app.services.knowledge_service import get_knowledge_service
+from app.services.llm_service import get_llm_provider
+from app.services.session_store import ChatSession, session_store
 from crop_ai.llm.base import ProviderCapabilities, ProviderUnavailable
 from crop_ai.rag.contracts import RetrievedPassage
+
+logger = logging.getLogger(__name__)
 
 
 def _citation(passage: RetrievedPassage) -> ChatCitation:
@@ -129,6 +132,7 @@ class ChatService:
                     "status": "unavailable",
                 }
                 warnings.append(str(exc))
+                logger.warning("LLM provider failed: %s", exc)
         llm_ms = (time.perf_counter() - llm_started) * 1000
 
         allowed = {item.citation_id: item for item in passages}

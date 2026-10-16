@@ -29,9 +29,9 @@ publishable Phase 3 metric is present.
 ## Start commands
 
 ```bash
-cd "/Users/abhaychougala/Documents/Clg/4th year/7th sem/Project/crop_disease_multimodal_ai"
+cd "/Users/abhaychougala/Documents/Clg/4th year/7th sem/Project/crop_disease_multimodal_ai/backend"
 source .venv/bin/activate
-uvicorn backend.app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --reload-dir app --reload-dir src --port 8000
 ```
 
 ```bash

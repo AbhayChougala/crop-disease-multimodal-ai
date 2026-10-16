@@ -1,5 +1,7 @@
 # Diagnosis reports
 
+Run the commands below from `backend/` with its virtual environment active.
+
 Every completed diagnosis is archived under ignored `artifacts/runtime/diagnoses/`. Report creation is
 separate from inference, so an optional PDF failure cannot break diagnosis.
 

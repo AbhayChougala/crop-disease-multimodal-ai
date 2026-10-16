@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from backend.app.core.config import get_settings
-from backend.app.services.diagnosis_archive import load_diagnosis
+from app.core.config import get_settings
+from app.services.diagnosis_archive import load_diagnosis
 from crop_ai.reports.html_report import render_html_report
 from crop_ai.reports.pdf_report import PDFReportUnavailable, render_pdf_report
 

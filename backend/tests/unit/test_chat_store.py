@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from backend.app.services.session_store import SessionStore
+from app.services.session_store import SessionStore
 
 
 def test_sqlite_chat_history_is_bounded_and_contains_no_evidence_blob(tmp_path: Path) -> None:

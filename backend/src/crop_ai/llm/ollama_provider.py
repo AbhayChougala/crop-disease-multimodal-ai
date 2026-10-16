@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from crop_ai.llm.base import ProviderCapabilities, ProviderStatus, ProviderUnavailable
+from crop_ai.llm.formatting import advisory_payload
 from crop_ai.llm.grounding import validate_citations
 from crop_ai.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from crop_ai.llm.schemas import GroundedAdvisory
@@ -51,7 +52,9 @@ class OllamaProvider:
                 response.raise_for_status()
             parsed = GroundedAdvisory.model_validate(json.loads(response.json()["response"]))
             advisory = validate_citations(parsed, retrieved)
-            return {**advisory.model_dump(), "is_mock": False, "status": "available"}
+            return {
+                **advisory_payload(advisory),
+            }
         except (httpx.HTTPError, KeyError, ValueError) as exc:
             raise ProviderUnavailable(f"Ollama generation failed: {type(exc).__name__}") from exc
 
@@ -59,7 +62,7 @@ class OllamaProvider:
         self, evidence, question, passages=None, history=None, preferred_language="en"
     ):
         response = await self.generate(evidence, question, passages, history, preferred_language)
-        yield response["summary"]
+        yield response["answer"]
 
     async def health(self) -> ProviderStatus:
         try:

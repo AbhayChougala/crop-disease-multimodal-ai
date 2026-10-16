@@ -4,8 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.app.core.config import PROJECT_ROOT, get_settings
-from backend.app.services.knowledge_service import get_knowledge_service
+from app.core.config import PROJECT_ROOT, get_settings
+from app.services.knowledge_service import get_knowledge_service
 
 router = APIRouter(tags=["knowledge"])
 

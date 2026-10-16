@@ -7,7 +7,7 @@ On the NVIDIA Windows/Linux laptop:
 
 ```bash
 git clone <repository-url>
-cd crop_disease_multimodal_ai
+cd crop-disease-multimodal-ai/backend   # all Python commands below run from backend/
 python3.12 -m venv .venv
 source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -36,12 +36,12 @@ Run a one-epoch edited copy of each configuration before a long job. Resume an i
 `--resume artifacts/models/<experiment>/last.pt`. Evaluate each best checkpoint against the identical
 held-out split and save its JSON beneath `research/results/raw/model_comparison/`.
 
-Copy the selected `.pt` checkpoint back to the Mac under ignored `artifacts/models/`, preserving its
+Copy the selected `.pt` checkpoint back to the Mac under ignored `backend/artifacts/models/`, preserving its
 SHA-256. No source change is needed:
 
 ```bash
 MODEL_MODE=real MODEL_PATH=artifacts/models/<checkpoint>.pt \
-  uvicorn backend.app.main:app --reload --port 8000
+  python -m uvicorn app.main:app --reload --reload-dir app --reload-dir src --port 8000
 curl http://localhost:8000/api/v1/system/capabilities
 ```
 

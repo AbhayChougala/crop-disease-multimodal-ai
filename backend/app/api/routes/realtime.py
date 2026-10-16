@@ -6,7 +6,7 @@ import time
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from backend.app.services.model_manager import get_model_manager
+from app.services.model_manager import get_model_manager
 from crop_ai.cv.decode import ImageDecodeError, decode_image
 from crop_ai.cv.preprocessing import preprocess_image
 

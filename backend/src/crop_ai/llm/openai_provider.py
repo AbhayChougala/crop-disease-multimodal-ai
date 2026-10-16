@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from crop_ai.llm.base import ProviderCapabilities, ProviderStatus, ProviderUnavailable
+from crop_ai.llm.formatting import advisory_payload
 from crop_ai.llm.grounding import validate_citations
 from crop_ai.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from crop_ai.llm.schemas import GroundedAdvisory
@@ -60,9 +61,7 @@ class OpenAIProvider:
                 raise ProviderUnavailable("The model returned no validated structured output.")
             advisory = validate_citations(parsed, retrieved)
             return {
-                **advisory.model_dump(),
-                "is_mock": False,
-                "status": "available",
+                **advisory_payload(advisory),
                 "usage": response.usage.model_dump() if response.usage else None,
             }
         except ProviderUnavailable:
@@ -74,7 +73,7 @@ class OpenAIProvider:
         self, evidence, question, passages=None, history=None, preferred_language="en"
     ):
         response = await self.generate(evidence, question, passages, history, preferred_language)
-        yield response["summary"]
+        yield response["answer"]
 
     async def health(self) -> ProviderStatus:
         return ProviderStatus(

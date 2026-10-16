@@ -1,15 +1,15 @@
 from fastapi import APIRouter, HTTPException, Response, status
 
-from backend.app.core.config import get_settings
-from backend.app.schemas.chat import (
+from app.core.config import get_settings
+from app.schemas.chat import (
     ChatRequest,
     ChatResponse,
     ChatSessionResponse,
     CreateSessionRequest,
     SessionMessageRequest,
 )
-from backend.app.services.chat_service import chat_service
-from backend.app.services.session_store import ChatSession, session_store
+from app.services.chat_service import chat_service
+from app.services.session_store import ChatSession, session_store
 
 router = APIRouter(tags=["chat"])
 

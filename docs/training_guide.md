@@ -1,5 +1,7 @@
 # Training guide
 
+Run the commands below from `backend/` with its virtual environment active.
+
 Install the ML extra and verify the selected device:
 
 ```bash

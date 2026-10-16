@@ -23,6 +23,9 @@ class HybridRetriever:
         self.semantic = semantic
         self.lexical_weight = lexical_weight / total
         self.semantic_weight = semantic_weight / total
+        # Expose the semantic index's corpus and metadata for status reporting.
+        self.chunks = getattr(semantic, "chunks", getattr(lexical, "chunks", []))
+        self.metadata = getattr(semantic, "metadata", {})
 
     @staticmethod
     def _normalized(results: list[RetrievedPassage]) -> dict[str, float]:

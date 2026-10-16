@@ -2,10 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from backend.app.core.config import Settings, get_settings
-from backend.app.schemas.system import CapabilitiesResponse
-from backend.app.services.knowledge_service import get_knowledge_service
-from backend.app.services.model_manager import get_model_manager
+from app.core.config import Settings, get_settings
+from app.schemas.system import CapabilitiesResponse
+from app.services.knowledge_service import get_knowledge_service
+from app.services.model_manager import get_model_manager
 from crop_ai.device import get_device_info
 from crop_ai.models.registry import SUPPORTED_ARCHITECTURES
 

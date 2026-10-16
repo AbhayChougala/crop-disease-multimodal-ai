@@ -34,6 +34,7 @@ export function AskCropAIPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<ChatResponse["metadata"] | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -83,6 +84,7 @@ export function AskCropAIPage() {
       setMessages((items) => [...items, responseMessage(response)]);
       setCitations(response.sources);
       setMetadata(response.metadata);
+      setWarnings(response.warnings);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Message failed.");
     } finally {
@@ -96,6 +98,7 @@ export function AskCropAIPage() {
     setMessages([]);
     setCitations([]);
     setMetadata(null);
+    setWarnings([]);
     setError(null);
     try {
       const created = await createChatSession("general", undefined, language);
@@ -127,14 +130,14 @@ export function AskCropAIPage() {
             {messages.map((item) => <article className={`message ${item.role}`} key={item.message_id}><div className="message-heading"><strong>{item.role === "user" ? "You" : "CropAI"}</strong><time>{new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div><p>{item.content}</p>{item.citations.length > 0 && <button type="button" className="citation-link" onClick={() => setCitations(item.citations)}>{item.citations.length} cited passage{item.citations.length === 1 ? "" : "s"}</button>}{item.role === "assistant" && <button type="button" className="copy-link" onClick={() => navigator.clipboard.writeText(item.content)}>Copy</button>}</article>)}
             {sending && <div className="message assistant loading-message">Retrieving evidence and preparing a cautious response…</div>}
           </div>
-          <form className="ask-form" onSubmit={submit}><label className="sr-only" htmlFor="ask-message">Question</label><textarea id="ask-message" value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={2000} placeholder="Ask about crop symptoms, uncertainty, prevention evidence…" /><button className="button primary" disabled={!draft.trim() || sending || !session}>Send</button></form>
+          <form className="ask-form" onSubmit={submit}><label className="sr-only" htmlFor="ask-message">Question</label><textarea id="ask-message" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (draft.trim() && !sending && session) void submit(); } }} maxLength={2000} placeholder="Ask about crop symptoms, uncertainty, prevention evidence… (Enter to send, Shift+Enter for a new line)" /><button className="button primary" disabled={!draft.trim() || sending || !session}>Send</button></form>
           {error && <div className="chat-error" role="alert">{error}{lastQuestion && <button type="button" onClick={() => submit(undefined, lastQuestion)}>Retry</button>}</div>}
           <p className="muted chat-disclaimer">Decision support only. Verify important actions with a qualified agricultural expert.</p>
         </section>
 
         <aside className="source-drawer">
           <div className="panel"><p className="eyebrow">Grounding</p><h2>Sources</h2>{citations.length === 0 ? <p className="muted">No source is attached to the selected answer. Treat it as unsupported or insufficient evidence.</p> : citations.map((source) => <article className="source-card" key={source.source_id}><span>{source.source_id}</span><h3>{source.title}</h3><p>{source.excerpt}</p><small>{[source.organization, source.section_name, source.page ? `page ${source.page}` : null].filter(Boolean).join(" · ")}</small>{source.url && <a href={source.url} target="_blank" rel="noreferrer">Open source ↗</a>}</article>)}</div>
-          <div className="panel pipeline-meta"><p className="eyebrow">Pipeline metadata</p><dl><div><dt>Mode</dt><dd>{modeLabel}</dd></div><div><dt>Provider</dt><dd>{metadata?.provider ?? session?.provider ?? "—"}</dd></div><div><dt>Model</dt><dd>{metadata?.model || session?.model || "—"}</dd></div><div><dt>Retriever</dt><dd>{metadata?.retriever ?? "—"}</dd></div><div><dt>Retrieved</dt><dd>{metadata?.retrieved_chunks ?? 0} chunks</dd></div><div><dt>Total time</dt><dd>{metadata ? `${metadata.total_ms.toFixed(0)} ms` : "—"}</dd></div></dl>{latestAssistant?.citations.length === 0 && <span className="tag caution-tag">No citation</span>}</div>
+          <div className="panel pipeline-meta"><p className="eyebrow">Pipeline metadata</p><dl><div><dt>Mode</dt><dd>{modeLabel}</dd></div><div><dt>Provider</dt><dd>{metadata?.provider ?? session?.provider ?? "—"}</dd></div><div><dt>Model</dt><dd>{metadata?.model || session?.model || "—"}</dd></div><div><dt>Retriever</dt><dd>{metadata?.retriever ?? "—"}</dd></div><div><dt>Retrieved</dt><dd>{metadata?.retrieved_chunks ?? 0} chunks</dd></div><div><dt>Total time</dt><dd>{metadata ? `${metadata.total_ms.toFixed(0)} ms` : "—"}</dd></div></dl>{latestAssistant?.citations.length === 0 && <span className="tag caution-tag">No citation</span>}{warnings.length > 0 && <ul className="pipeline-warnings">{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}</div>
         </aside>
       </div>
     </main>

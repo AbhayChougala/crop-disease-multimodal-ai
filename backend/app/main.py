@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.routes import (
+from app.api.routes import (
     chat,
     diagnosis,
     feedback,
@@ -17,9 +17,9 @@ from backend.app.api.routes import (
     research,
     system,
 )
-from backend.app.core.config import get_settings
-from backend.app.services.model_manager import get_model_manager
-from backend.app.services.session_store import session_store
+from app.core.config import get_settings
+from app.services.model_manager import get_model_manager
+from app.services.session_store import session_store
 from crop_ai.device import get_device_info
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -54,7 +54,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=[o.strip() for o in settings.frontend_origin.split(",") if o.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

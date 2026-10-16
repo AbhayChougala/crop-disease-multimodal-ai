@@ -9,7 +9,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Literal
 
-from backend.app.core.config import PROJECT_ROOT, get_settings
+from app.core.config import PROJECT_ROOT, get_settings
 
 ChatMode = Literal["general", "diagnosis"]
 

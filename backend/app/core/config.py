@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
-    frontend_origin: str = "http://localhost:5173"
+    # Comma-separated list of browser origins allowed by CORS.
+    frontend_origin: str = "http://localhost:5173,http://127.0.0.1:5173"
     model_mode: Literal["mock", "real"] = "mock"
     model_path: Path = Path("artifacts/models/best_model.pt")
     model_arch: str = "efficientnet_b0"
@@ -45,12 +46,16 @@ class Settings(BaseSettings):
     hybrid_semantic_weight: float = Field(default=0.5, ge=0, le=1)
     embedding_provider: Literal["sentence_transformers"] = "sentence_transformers"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    llm_provider: Literal["mock", "openai", "ollama", "local"] = "mock"
+    llm_provider: Literal["mock", "openai", "gemini", "ollama", "local"] = "mock"
     llm_model: str = ""
     llm_api_key: str = ""
     llm_base_url: str = ""
     llm_timeout: float = Field(default=30.0, ge=1, le=300)
     openai_api_key: str = ""
+    # Gemini: "developer" = AI Studio key, "vertex" = Vertex AI express key, "auto" = try both.
+    gemini_backend: Literal["auto", "developer", "vertex"] = "auto"
+    # Comma-separated models tried in order when LLM_MODEL is retired, overloaded or rate limited.
+    llm_fallback_models: str = ""
     openai_model: str = ""
     local_llm_base_url: str = ""
     local_llm_model: str = ""

@@ -24,7 +24,7 @@ The dedicated Ask CropAI page supports general and diagnosis-aware modes. Retrie
 untrusted data; provider output can only cite IDs present in the retrieval result. The application
 abstains before calling a real provider when no source is available.
 
-`src/crop_ai` contains framework-independent CV, model, evidence, retrieval, and generation code. `backend/app` owns transport, validation, configuration, and orchestration. `frontend` consumes the API contract and never receives credentials.
+`backend/src/crop_ai` contains framework-independent CV, model, evidence, retrieval, and generation code. `backend/app` owns transport, validation, configuration, and orchestration. `frontend` consumes the API contract and never receives credentials.
 
 Classification training/evaluation, U-Net segmentation, RAG indexing, and experiment aggregation run as
 offline CLIs. Generated datasets, checkpoints, vector indexes, and results stay outside Git.
@@ -32,3 +32,18 @@ offline CLIs. Generated datasets, checkpoints, vector indexes, and results stay 
 Grad-CAM explains classifier influence. It remains separate from the experimental lesion mask and is
 never used as severity ground truth. Real model mode fails closed; it does not silently produce demo
 predictions when a checkpoint is missing or invalid.
+
+## Repository layout
+
+```text
+backend/    Python project root: pyproject.toml, .env, .venv
+  app/        FastAPI transport, config, services (import name `app`)
+  src/crop_ai/  CV, models, RAG, LLM, reports (research library)
+  training/ scripts/ tests/ configs/
+  data/ artifacts/ knowledge/ research/   (generated content is git-ignored)
+frontend/   React + Vite app (npm commands run here)
+docs/       documentation
+```
+
+Every Python command in these docs (pip, pytest, ruff, `python -m crop_ai...`, uvicorn) runs from
+`backend/`; relative paths such as `configs/...`, `data/...` and `artifacts/...` are relative to it.

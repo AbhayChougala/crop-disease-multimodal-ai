@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from backend.app.core.config import get_settings
+from app.core.config import get_settings
 from crop_ai.llm.factory import create_provider
 
 
@@ -22,4 +22,8 @@ def get_llm_provider():
         api_key=api_key,
         base_url=base_url,
         timeout=settings.llm_timeout,
+        gemini_backend=settings.gemini_backend,
+        fallback_models=[
+            item.strip() for item in settings.llm_fallback_models.split(",") if item.strip()
+        ],
     )

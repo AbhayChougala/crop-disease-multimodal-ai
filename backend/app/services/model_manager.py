@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import numpy as np
 
-from backend.app.core.config import get_settings
+from app.core.config import get_settings
 from crop_ai.models.mock_classifier import MockClassifier
 
 RuntimeState = Literal["DEMO", "REAL", "UNAVAILABLE"]

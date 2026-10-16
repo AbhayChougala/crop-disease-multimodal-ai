@@ -99,7 +99,8 @@ footer { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1.1rem,4vw,4.5re
 .suggestion-row button { border: 1px solid var(--line); background: #edf2e7; color: var(--green-dark); border-radius: 999px; padding: .55rem .8rem; cursor: pointer; }
 .conversation { min-height: 150px; max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: .7rem; padding: 1rem; background: #f5f6ef; border-radius: 14px; }
 .message { max-width: 84%; padding: .75rem .9rem; border-radius: 14px; }
-.message p { margin: .25rem 0 0; line-height: 1.5; }
+.message p { margin: .25rem 0 0; line-height: 1.5; white-space: pre-line; }
+.pipeline-warnings { margin: .75rem 0 0; padding-left: 1.1rem; font-size: .8rem; color: #8a4b12; overflow-wrap: anywhere; }
 .message.user { align-self: flex-end; background: var(--green-dark); color: white; }
 .message.assistant { align-self: flex-start; background: white; border: 1px solid var(--line); }
 .chat-form { display: grid; grid-template-columns: 1fr auto; gap: .7rem; margin-top: 1rem; }

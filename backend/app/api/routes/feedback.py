@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-from backend.app.schemas.system import FeedbackRequest, FeedbackResponse
+from app.schemas.system import FeedbackRequest, FeedbackResponse
 
 router = APIRouter(tags=["feedback"])
 DB_PATH = Path("artifacts/runtime/feedback.sqlite3")

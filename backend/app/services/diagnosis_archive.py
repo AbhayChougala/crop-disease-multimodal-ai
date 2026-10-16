@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from backend.app.core.config import PROJECT_ROOT
+from app.core.config import PROJECT_ROOT
 
 ARCHIVE_ROOT = PROJECT_ROOT / "artifacts/runtime/diagnoses"
 SAFE_ID = re.compile(r"^[0-9a-fA-F-]{16,64}$")

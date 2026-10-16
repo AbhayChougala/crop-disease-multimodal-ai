@@ -2,9 +2,9 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
-from backend.app.core.config import Settings, get_settings
-from backend.app.schemas.diagnosis import DiagnosisResponse, PreprocessPreviewResponse
-from backend.app.services.diagnosis_service import DiagnosisService
+from app.core.config import Settings, get_settings
+from app.schemas.diagnosis import DiagnosisResponse, PreprocessPreviewResponse
+from app.services.diagnosis_service import DiagnosisService
 from crop_ai.cv.decode import ImageDecodeError
 
 router = APIRouter(tags=["diagnosis"])
