@@ -1,4 +1,4 @@
-import type { DiagnosisResponse } from "../types/api";
+import type { ChatResponse, ChatSession, DiagnosisResponse } from "../types/api";
 
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -29,10 +29,48 @@ export async function sendChatMessage(sessionId: string, message: string) {
     body: JSON.stringify({ session_id: sessionId, message }),
   });
   if (!response.ok) throw new Error(await parseError(response));
-  return (await response.json()) as {
-    answer: string;
-    sources: Array<{ source_id: string; title: string; url?: string }>;
-    warnings: string[];
-    is_mock: boolean;
-  };
+  return (await response.json()) as ChatResponse;
+}
+
+export async function createChatSession(
+  mode: "general" | "diagnosis",
+  diagnosisId?: string,
+  preferredLanguage: "en" | "kn" | "hi" = "en",
+): Promise<ChatSession> {
+  const response = await fetch(`${API_BASE}/chat/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      mode,
+      diagnosis_id: diagnosisId,
+      preferred_language: preferredLanguage,
+    }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as ChatSession;
+}
+
+export async function loadChatSession(sessionId: string): Promise<ChatSession> {
+  const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}`);
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as ChatSession;
+}
+
+export async function sendSessionMessage(
+  sessionId: string,
+  message: string,
+  preferredLanguage: "en" | "kn" | "hi",
+): Promise<ChatResponse> {
+  const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, preferred_language: preferredLanguage }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as ChatResponse;
+}
+
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(await parseError(response));
 }

@@ -1,0 +1,4 @@
+question_id,question,expected_source_ids,crop,disease,answerability,notes,is_sample
+SAMPLE-G1,What does the synthetic fixture say about uncertain software predictions?,SAMPLE_001,Tomato,Early Blight,ANSWERABLE,Software fixture only,true
+SAMPLE-G2,Does the fixture provide detailed disease management instructions?,SAMPLE_001,Tomato,Early Blight,PARTIALLY_ANSWERABLE,Expected to state limits,true
+SAMPLE-G3,What verified dosage does the corpus give for an absent crop?,,,,UNANSWERABLE,Expected to abstain,true

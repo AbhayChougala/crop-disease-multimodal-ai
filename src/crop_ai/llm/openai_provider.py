@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from crop_ai.llm.base import ProviderUnavailable
+from crop_ai.llm.base import ProviderCapabilities, ProviderStatus, ProviderUnavailable
 from crop_ai.llm.grounding import validate_citations
 from crop_ai.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from crop_ai.llm.schemas import GroundedAdvisory
@@ -33,6 +33,8 @@ class OpenAIProvider:
         evidence: dict[str, Any],
         question: str | None = None,
         passages: list[RetrievedPassage] | None = None,
+        history: list[dict[str, str]] | None = None,
+        preferred_language: str = "en",
     ) -> dict[str, Any]:
         retrieved = passages or []
         if not retrieved:
@@ -44,7 +46,12 @@ class OpenAIProvider:
                 model=self.model,
                 input=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(evidence, retrieved, question)},
+                    {
+                        "role": "user",
+                        "content": build_user_prompt(
+                            evidence, retrieved, question, history, preferred_language
+                        ),
+                    },
                 ],
                 text_format=GroundedAdvisory,
             )
@@ -62,3 +69,20 @@ class OpenAIProvider:
             raise
         except Exception as exc:
             raise ProviderUnavailable(f"OpenAI generation failed: {type(exc).__name__}") from exc
+
+    async def stream(
+        self, evidence, question, passages=None, history=None, preferred_language="en"
+    ):
+        response = await self.generate(evidence, question, passages, history, preferred_language)
+        yield response["summary"]
+
+    async def health(self) -> ProviderStatus:
+        return ProviderStatus(
+            "openai",
+            self.model,
+            "CONFIGURED",
+            "Credentials are configured; no billable health request was made.",
+        )
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities("openai", self.model, False, True, None)

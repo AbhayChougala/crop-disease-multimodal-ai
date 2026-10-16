@@ -1,41 +1,63 @@
-# RAG and LLM guide
+# RAG guide
 
-Only approved local documents listed in `knowledge/source_manifest.csv` are ingested. Record title,
-organization, source URL, date, crop/disease filters, usage/license notes, local path, and an optional
-SHA-256 version hash. Do not scrape or commit copyrighted documents.
+CropAI has three interchangeable local retrievers: TF-IDF (`tfidf`), SentenceTransformers + FAISS
+(`semantic`), and their normalized weighted merger (`hybrid`). TF-IDF remains the lexical research
+baseline. Semantic dependencies and model downloads are optional and never happen at API startup.
+
+## Approved sources and ingestion
+
+Only files explicitly declared in `knowledge/source_manifest.csv` can be ingested. Supported formats
+are PDF, TXT, Markdown, and HTML. The manifest preserves document ID, title, organization, author,
+publication date, source URL, crop, disease, source type, usage/license note, local path, and optional
+SHA-256. Source files and generated indexes are Git-ignored.
 
 ```bash
+source .venv/bin/activate
 python -m crop_ai.rag.validate \
   --manifest knowledge/source_manifest.csv --source-root knowledge/source_docs
 python -m crop_ai.rag.ingest
-python -m crop_ai.rag.retriever --build
+python -m crop_ai.rag.build_index --mode tfidf
 python -m crop_ai.rag.retriever --query "tomato early blight uncertainty"
 ```
 
-The default index is local TF-IDF and requires no paid API or model download. It preserves document,
-chunk, organization, crop, disease, and PDF page metadata. Treat `.joblib` indexes as trusted local
-generated files; never load an index from an untrusted source. Sentence-transformer/FAISS retrieval is
-a documented future extension, not silently downloaded today.
+The committed manifest is intentionally empty. Add only reviewed, legally usable documents; never
+substitute the test fixture for an authoritative corpus.
 
-Enable runtime retrieval only after building an index:
+## Semantic and hybrid indexes
+
+Install optional dependencies, review the configured model, and explicitly permit its first download:
+
+```bash
+python -m pip install -e '.[semantic-rag]'
+python -m crop_ai.rag.build_index --mode semantic --allow-model-download
+python -m crop_ai.rag.build_index --mode all --allow-model-download
+```
+
+Subsequent API loads use local files only. FAISS metadata records model ID, vector dimensions, corpus
+hash, manifest hash, creation time, and document/chunk counts. Loading rejects a model, dimension, or
+corpus mismatch. Chunk metadata remains in JSON beside the binary FAISS index.
 
 ```dotenv
 RAG_ENABLED=true
-RAG_INDEX_PATH=data/vectorstore/tfidf.joblib
-LLM_PROVIDER=openai
-LLM_MODEL=<configured-model>
-LLM_API_KEY=<secret>
+RAG_RETRIEVER=hybrid
+RAG_TOP_K=5
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+HYBRID_LEXICAL_WEIGHT=0.5
+HYBRID_SEMANTIC_WEIGHT=0.5
 ```
 
-For Ollama, use `LLM_PROVIDER=ollama`, `LLM_BASE_URL=http://localhost:11434`, and a local model name.
-The OpenAI implementation uses the Responses API structured-output parser. Both real providers refuse
-to generate grounded advice when retrieval is empty, validate returned citation IDs, treat retrieved
-text as untrusted, and never infer visual symptoms absent from structured evidence.
+Crop and predicted disease are query hints by default. Set `RAG_STRICT_DIAGNOSIS_FILTERS=true` only
+for an experiment requiring hard filters. Every citation is derived from indexed chunk metadata.
 
-Evaluate retrieval with a committed JSON query set containing `query` and `expected_document_id`:
+## Evaluation
 
 ```bash
-python -m crop_ai.rag.evaluate --index data/vectorstore/tfidf.joblib \
-  --cases research/protocols/retrieval_cases.json \
-  --output research/results/raw/llm_grounding/retrieval.json
+python -m crop_ai.rag.evaluate \
+  --retriever tfidf \
+  --cases research/protocols/sample_rag_benchmark.csv \
+  --output research/results/sample_tfidf_rag.json \
+  --table-output research/tables/sample_tfidf_rag.csv
 ```
+
+The sample benchmark is synthetic and output is labelled `SAMPLE_FIXTURE_ONLY`. Use a manually
+reviewed benchmark for research claims. See `research/protocols/rag_evaluation.md`.

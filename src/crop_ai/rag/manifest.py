@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from urllib.parse import urlparse
 
 from crop_ai.rag.contracts import KnowledgeSource
 
@@ -29,7 +30,10 @@ def read_source_manifest(path: Path) -> list[KnowledgeSource]:
         if missing:
             raise ValueError(f"Knowledge manifest is missing columns: {sorted(missing)}")
         sources = [
-            KnowledgeSource(**{field: row[field].strip() for field in REQUIRED_COLUMNS})
+            KnowledgeSource(
+                **{field: row[field].strip() for field in REQUIRED_COLUMNS},
+                author=(row.get("author") or "").strip(),
+            )
             for row in reader
         ]
     identifiers = [source.document_id for source in sources]
@@ -42,4 +46,6 @@ def read_source_manifest(path: Path) -> list[KnowledgeSource]:
             )
         if not source.license_or_usage_note:
             raise ValueError(f"Knowledge source {source.document_id} lacks usage/license notes.")
+        if source.url and urlparse(source.url).scheme not in {"http", "https"}:
+            raise ValueError(f"Knowledge source {source.document_id} URL must use HTTP or HTTPS.")
     return sources

@@ -111,6 +111,7 @@ class DiagnosisResponse(BaseModel):
     evidence: Evidence
     advisory: Advisory
     timings_ms: Timings
+    runtime: dict[str, str | bool]
     warnings: list[str]
 
 

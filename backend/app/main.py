@@ -13,11 +13,13 @@ from backend.app.api.routes import (
     health,
     knowledge,
     realtime,
+    reports,
     research,
     system,
 )
 from backend.app.core.config import get_settings
 from backend.app.services.model_manager import get_model_manager
+from backend.app.services.session_store import session_store
 from crop_ai.device import get_device_info
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -29,6 +31,7 @@ async def lifespan(_: FastAPI):
     settings = get_settings()
     device = get_device_info()
     runtime = get_model_manager().status
+    expired_sessions = session_store.clear_expired(settings.chat_retention_days)
     logger.info(
         "startup device=%s model_mode=%s model_loaded=%s rag_enabled=%s llm_provider=%s",
         device.selected,
@@ -37,6 +40,8 @@ async def lifespan(_: FastAPI):
         settings.rag_enabled,
         settings.llm_provider,
     )
+    if expired_sessions:
+        logger.info("removed %s expired chat session(s)", expired_sessions)
     yield
 
 
@@ -61,6 +66,7 @@ routes = (
     diagnosis.router,
     chat.router,
     knowledge.router,
+    reports.router,
     feedback.router,
     research.router,
 )

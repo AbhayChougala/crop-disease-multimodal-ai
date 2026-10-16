@@ -8,11 +8,11 @@ A research-oriented prototype that combines computer vision, explainability, kno
   safe state-dict checkpoints, top-k inference, calibration metadata, and abstention
 - OpenCV preprocessing, U-Net lesion-segmentation training/inference, mask metrics, safe
   experimental severity, and class-specific Grad-CAM
-- Local source-manifest ingestion, TF-IDF retrieval, passage citations, OpenAI/Ollama provider
-  interfaces, and deterministic offline demo chat
-- FastAPI model manager, diagnosis sessions, knowledge search, research summaries, and
+- Manifest-only ingestion; TF-IDF, SentenceTransformers/FAISS, and hybrid retrieval; validated
+  passage citations; OpenAI/Ollama provider interfaces; and deterministic offline demo chat
+- FastAPI model manager, durable SQLite general/diagnosis chat, HTML/PDF/JSON reports, and
   throttled real-time WebSocket inference
-- React + TypeScript diagnosis/chat/live-camera/research interface
+- React + TypeScript diagnosis, dedicated Ask CropAI, live-camera, and research interface
 
 No model accuracy, research result, or agricultural validation is claimed by this repository.
 
@@ -26,7 +26,7 @@ Run all backend commands from the cloned repository root (`crop_disease_multimod
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e '.[dev,ml,llm]'
+python -m pip install -e '.[dev,ml,llm,reports]'
 cp .env.example .env
 uvicorn backend.app.main:app --reload --port 8000
 ```
@@ -70,4 +70,15 @@ MODEL_MODE=real MODEL_PATH=artifacts/models/efficientnet_b0/best.pt \
 
 See the [dataset guide](docs/dataset_guide.md), [training guide](docs/training_guide.md),
 [model architecture](docs/model_architecture.md), [RAG guide](docs/rag_guide.md),
+[chat architecture](docs/chatbot_architecture.md), [report guide](docs/report_generation.md),
 [GPU handoff](docs/gpu_handoff.md), and [research experiments](docs/research_experiments.md).
+
+## Phase 3 quick demo
+
+The default offline configuration uses the mock classifier and mock LLM. Open `/ask` for general
+chat or diagnose an image and choose “Open diagnosis-aware chat.” Answers remain explicitly demo and
+will show no grounded agriculture claims until `RAG_ENABLED=true` and an approved corpus is indexed.
+Use the report buttons to export the complete diagnosis evidence.
+
+Build indexes and run the clearly synthetic retrieval fixture as documented in
+[`docs/rag_guide.md`](docs/rag_guide.md). Semantic model download is always explicit.

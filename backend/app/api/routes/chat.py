@@ -1,97 +1,123 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response, status
 
 from backend.app.core.config import get_settings
-from backend.app.schemas.chat import ChatRequest, ChatResponse
-from backend.app.schemas.diagnosis import SourceReference
-from backend.app.services.knowledge_service import get_knowledge_service
-from backend.app.services.llm_service import get_llm_provider
-from backend.app.services.session_store import session_store
-from crop_ai.llm.base import ProviderUnavailable
+from backend.app.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+    ChatSessionResponse,
+    CreateSessionRequest,
+    SessionMessageRequest,
+)
+from backend.app.services.chat_service import chat_service
+from backend.app.services.session_store import ChatSession, session_store
 
 router = APIRouter(tags=["chat"])
 
 
+def _serialize(session: ChatSession) -> ChatSessionResponse:
+    return ChatSessionResponse(
+        session_id=session.session_id,
+        mode=session.mode,
+        diagnosis_id=session.diagnosis_id,
+        provider=session.provider,
+        model=session.model,
+        preferred_language=session.preferred_language,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=session.messages,
+    )
+
+
+def _require(session_id: str) -> ChatSession:
+    session = session_store.get(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Chat session was not found or expired.")
+    return session
+
+
+@router.post("/chat/sessions", response_model=ChatSessionResponse, status_code=201)
+async def create_session(request: CreateSessionRequest) -> ChatSessionResponse:
+    settings = get_settings()
+    model = settings.llm_model or settings.openai_model or settings.local_llm_model
+    if request.mode == "diagnosis":
+        if not request.diagnosis_id:
+            raise HTTPException(
+                status_code=422, detail="diagnosis_id is required in diagnosis mode."
+            )
+        existing = session_store.get(request.diagnosis_id)
+        if existing is None:
+            raise HTTPException(
+                status_code=404, detail="Diagnosis session was not found or expired."
+            )
+        return _serialize(existing)
+    return _serialize(
+        session_store.create(
+            mode="general",
+            provider=settings.llm_provider,
+            model=model,
+            preferred_language=request.preferred_language,
+        )
+    )
+
+
+@router.get("/chat/sessions/{session_id}", response_model=ChatSessionResponse)
+async def get_session(session_id: str) -> ChatSessionResponse:
+    return _serialize(_require(session_id))
+
+
+@router.get("/chat/sessions/{session_id}/messages")
+async def get_messages(session_id: str) -> dict[str, object]:
+    session = _require(session_id)
+    return {"session_id": session_id, "messages": session.messages}
+
+
+@router.post("/chat/sessions/{session_id}/messages", response_model=ChatResponse)
+async def send_session_message(session_id: str, request: SessionMessageRequest) -> ChatResponse:
+    return await chat_service.answer(
+        _require(session_id), request.message, request.preferred_language
+    )
+
+
+@router.delete("/chat/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(session_id: str) -> Response:
+    if not session_store.delete(session_id):
+        raise HTTPException(status_code=404, detail="Chat session was not found or expired.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
-    session = session_store.get(request.session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="Diagnosis session was not found or expired.")
-    session_store.append(request.session_id, "user", request.message)
-    settings = get_settings()
-    passages = []
-    if settings.llm_provider != "mock":
-        try:
-            passages = get_knowledge_service().search(
-                request.message,
-                crop=session.evidence.get("predicted_crop"),
-                disease=session.evidence.get("predicted_disease"),
-            )
-        except RuntimeError as exc:
-            answer = "Grounded guidance is unavailable because the knowledge index is unavailable."
-            session_store.append(request.session_id, "assistant", answer)
-            return ChatResponse(
-                answer=answer,
-                warnings=[str(exc)],
-                is_mock=False,
-                status="unavailable",
-            )
-        if not passages:
-            answer = "Grounded guidance is unavailable because no relevant source was retrieved."
-            session_store.append(request.session_id, "assistant", answer)
-            return ChatResponse(
-                answer=answer,
-                warnings=["No provider call was made without retrieved evidence."],
-                is_mock=False,
-                status="unavailable",
-            )
-    try:
-        response = await get_llm_provider().generate(
-            session.evidence,
-            request.message,
-            passages,
-        )
-    except ProviderUnavailable as exc:
-        answer = "The configured language provider is unavailable."
-        session_store.append(request.session_id, "assistant", answer)
-        return ChatResponse(
-            answer=answer,
-            warnings=[str(exc)],
-            is_mock=False,
-            status="unavailable",
-        )
-    answer = response["summary"]
-    session_store.append(request.session_id, "assistant", answer)
-    cited_ids = set(response.get("source_ids", []))
-    sources = [
-        SourceReference(
-            source_id=item.citation_id,
-            title=item.title,
-            organization=item.organization,
-            page=item.page,
-            url=item.url or None,
-        )
-        for item in passages
-        if item.citation_id in cited_ids
-    ]
-    return ChatResponse(
-        answer=answer,
-        sources=sources,
-        warnings=(
-            [
-                "The mock chat provider does not answer agricultural questions.",
-                "No agricultural corpus was retrieved, so grounded advice is unavailable.",
-            ]
-            if response.get("is_mock")
-            else []
-        ),
-        is_mock=bool(response.get("is_mock")),
-        status=str(response.get("status", "available")),
+    return await chat_service.answer(
+        _require(request.session_id), request.message, request.preferred_language
     )
+
+
+@router.post("/chat/general", response_model=ChatResponse, status_code=201)
+async def general_chat(request: SessionMessageRequest) -> ChatResponse:
+    settings = get_settings()
+    session = session_store.create(
+        mode="general",
+        provider=settings.llm_provider,
+        model=settings.llm_model or settings.openai_model or settings.local_llm_model,
+        preferred_language=request.preferred_language or "en",
+    )
+    return await chat_service.answer(session, request.message, request.preferred_language)
+
+
+@router.post("/chat/diagnosis/{diagnosis_id}", response_model=ChatResponse)
+async def diagnosis_chat(diagnosis_id: str, request: SessionMessageRequest) -> ChatResponse:
+    session = _require(diagnosis_id)
+    if session.mode != "diagnosis":
+        raise HTTPException(status_code=409, detail="Session is not linked to a diagnosis.")
+    return await chat_service.answer(session, request.message, request.preferred_language)
 
 
 @router.get("/chat/{session_id}/history")
 async def chat_history(session_id: str) -> dict[str, object]:
-    session = session_store.get(session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="Diagnosis session was not found or expired.")
-    return {"session_id": session_id, "messages": list(session.messages)}
+    session = _require(session_id)
+    return {"session_id": session_id, "messages": session.messages}
+
+
+@router.get("/llm/status")
+async def llm_status() -> dict[str, object]:
+    return await chat_service.provider_status()

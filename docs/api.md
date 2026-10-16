@@ -10,8 +10,19 @@ Base path: `/api/v1`
 | POST | `/preprocess/preview` | Implemented |
 | POST | `/diagnose` | Demo or configured real checkpoint; no silent fallback |
 | GET | `/knowledge/search` | Local source-preserving retrieval when enabled |
-| POST | `/chat` | Diagnosis-aware mock or grounded configured provider |
-| GET | `/chat/{session_id}/history` | Bounded in-memory session history |
+| GET | `/knowledge/sources` | Indexed source metadata |
+| GET | `/rag/status` | Retriever and index status |
+| POST | `/rag/rebuild` | Fixed-path local rebuild; development only |
+| GET | `/llm/status` | Provider capabilities and availability |
+| POST | `/chat/sessions` | Create persistent general/diagnosis session |
+| GET/DELETE | `/chat/sessions/{session_id}` | Load or clear a session |
+| GET/POST | `/chat/sessions/{session_id}/messages` | Bounded durable history / ask question |
+| POST | `/chat/general` | Create general session and answer |
+| POST | `/chat/diagnosis/{diagnosis_id}` | Diagnosis-context answer |
+| POST | `/chat` | Backward-compatible diagnosis/general session message |
+| GET | `/reports/diagnosis/{id}.html` | Portable diagnosis report |
+| GET | `/reports/diagnosis/{id}.pdf` | Optional ReportLab report |
+| GET | `/reports/diagnosis/{id}.json` | Typed evidence export |
 | POST | `/feedback` | Implemented |
 | GET | `/research/summary` | Implemented; never invents metrics |
 | WS | `/realtime/ws` | Throttled client-driven demo or real inference |

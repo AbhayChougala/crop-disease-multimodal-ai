@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 from dataclasses import asdict
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -46,7 +47,11 @@ def source_hash(path: Path) -> str:
 
 
 def ingest_source(
-    source: KnowledgeSource, source_root: Path, chunk_size: int, overlap: int
+    source: KnowledgeSource,
+    source_root: Path,
+    chunk_size: int,
+    overlap: int,
+    minimum_chunk_length: int = 100,
 ) -> list[KnowledgeChunk]:
     path = (source_root / source.local_file_path).resolve()
     if not path.is_relative_to(source_root.resolve()):
@@ -59,7 +64,7 @@ def ingest_source(
     chunks: list[KnowledgeChunk] = []
     sequence = 0
     for page, text in _read_pages(path):
-        for value in chunk_text(text, chunk_size, overlap):
+        for value in chunk_text(text, chunk_size, overlap, minimum_chunk_length):
             sequence += 1
             chunks.append(
                 KnowledgeChunk(
@@ -76,17 +81,25 @@ def ingest_source(
                     source_type=source.source_type,
                     license_or_usage_note=source.license_or_usage_note,
                     version_hash=source.version_hash or actual_hash,
+                    chunk_index=sequence,
+                    author=source.author,
+                    ingested_at=datetime.now(UTC).isoformat(),
                 )
             )
     return chunks
 
 
 def build_chunks(
-    manifest: Path, source_root: Path, output: Path, chunk_size: int = 900, overlap: int = 120
+    manifest: Path,
+    source_root: Path,
+    output: Path,
+    chunk_size: int = 900,
+    overlap: int = 120,
+    minimum_chunk_length: int = 100,
 ) -> list[KnowledgeChunk]:
     chunks: list[KnowledgeChunk] = []
     for source in read_source_manifest(manifest):
-        chunks.extend(ingest_source(source, source_root, chunk_size, overlap))
+        chunks.extend(ingest_source(source, source_root, chunk_size, overlap, minimum_chunk_length))
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps([asdict(item) for item in chunks], indent=2), encoding="utf-8")
     return chunks

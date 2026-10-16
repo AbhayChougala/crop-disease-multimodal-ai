@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from crop_ai.llm.base import ProviderUnavailable
+from crop_ai.llm.base import ProviderCapabilities, ProviderStatus, ProviderUnavailable
 from crop_ai.llm.grounding import validate_citations
 from crop_ai.llm.prompts import SYSTEM_PROMPT, build_user_prompt
 from crop_ai.llm.schemas import GroundedAdvisory
@@ -25,13 +25,18 @@ class OllamaProvider:
         evidence: dict[str, Any],
         question: str | None = None,
         passages: list[RetrievedPassage] | None = None,
+        history: list[dict[str, str]] | None = None,
+        preferred_language: str = "en",
     ) -> dict[str, Any]:
         retrieved = passages or []
         if not retrieved:
             raise ProviderUnavailable(
                 "Grounded generation is unavailable because retrieval was empty."
             )
-        prompt = f"{SYSTEM_PROMPT}\n\n{build_user_prompt(evidence, retrieved, question)}"
+        prompt = (
+            f"{SYSTEM_PROMPT}\n\n"
+            f"{build_user_prompt(evidence, retrieved, question, history, preferred_language)}"
+        )
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
@@ -49,3 +54,21 @@ class OllamaProvider:
             return {**advisory.model_dump(), "is_mock": False, "status": "available"}
         except (httpx.HTTPError, KeyError, ValueError) as exc:
             raise ProviderUnavailable(f"Ollama generation failed: {type(exc).__name__}") from exc
+
+    async def stream(
+        self, evidence, question, passages=None, history=None, preferred_language="en"
+    ):
+        response = await self.generate(evidence, question, passages, history, preferred_language)
+        yield response["summary"]
+
+    async def health(self) -> ProviderStatus:
+        try:
+            async with httpx.AsyncClient(timeout=min(self.timeout, 5.0)) as client:
+                response = await client.get(f"{self.base_url}/api/tags")
+                response.raise_for_status()
+            return ProviderStatus("ollama", self.model, "AVAILABLE")
+        except httpx.HTTPError:
+            return ProviderStatus("ollama", self.model, "UNAVAILABLE", "Ollama did not respond.")
+
+    def capabilities(self) -> ProviderCapabilities:
+        return ProviderCapabilities("ollama", self.model, False, True, None)

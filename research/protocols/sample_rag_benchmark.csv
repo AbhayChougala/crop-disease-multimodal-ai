@@ -1,0 +1,3 @@
+case_id,query,expected_document_ids,crop,disease,is_sample
+SAMPLE-Q1,What should happen when a software prediction is uncertain?,SAMPLE_001,Tomato,Early Blight,true
+SAMPLE-Q2,What kind of image is useful for testing leaf analysis?,SAMPLE_001,Tomato,Early Blight,true

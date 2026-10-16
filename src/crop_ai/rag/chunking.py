@@ -10,11 +10,18 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str]:
+def chunk_text(
+    text: str,
+    chunk_size: int = 900,
+    overlap: int = 120,
+    minimum_chunk_length: int = 100,
+) -> list[str]:
     if chunk_size < 100:
         raise ValueError("chunk_size must be at least 100 characters.")
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("overlap must be non-negative and smaller than chunk_size.")
+    if minimum_chunk_length < 1 or minimum_chunk_length > chunk_size:
+        raise ValueError("minimum_chunk_length must be between one and chunk_size.")
     cleaned = clean_text(text)
     if not cleaned:
         return []
@@ -27,7 +34,7 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str
             if boundary > start + chunk_size // 2:
                 end = boundary + 1
         chunk = cleaned[start:end].strip()
-        if chunk and (not chunks or chunk != chunks[-1]):
+        if len(chunk) >= minimum_chunk_length and chunk not in chunks:
             chunks.append(chunk)
         if end >= len(cleaned):
             break

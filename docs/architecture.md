@@ -12,11 +12,17 @@ FastAPI routes -> diagnosis/realtime services
         +-> leaf mask -> independent lesion mask -> explicit severity status
         +-> one-time model manager (explicit demo or safe state-dict checkpoint)
         +-> class-specific Grad-CAM and typed provenance-rich evidence
-        +-> local retrieval -> mock/OpenAI/Ollama provider
+        +-> lexical / semantic / hybrid retrieval -> mock/OpenAI/Ollama provider
+        +-> SQLite chat metadata + separate diagnosis artifact archive
+        +-> HTML / optional PDF / JSON report renderers
         |
         v
 Typed response with artifacts, sources, timings, warnings, and is_mock
 ```
+
+The dedicated Ask CropAI page supports general and diagnosis-aware modes. Retrieved chunks are
+untrusted data; provider output can only cite IDs present in the retrieval result. The application
+abstains before calling a real provider when no source is available.
 
 `src/crop_ai` contains framework-independent CV, model, evidence, retrieval, and generation code. `backend/app` owns transport, validation, configuration, and orchestration. `frontend` consumes the API contract and never receives credentials.
 

@@ -29,9 +29,9 @@ def main() -> int:
         parser.error("Provide --build or --query.")
     passages = TfidfStore.load(arguments.index).search(
         arguments.query,
-        arguments.top_k,
-        arguments.crop,
-        arguments.disease,
+        top_k=arguments.top_k,
+        crop=arguments.crop,
+        disease=arguments.disease,
     )
     print(json.dumps([asdict(item) for item in passages], indent=2))
     return 0

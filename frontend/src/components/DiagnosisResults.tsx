@@ -1,4 +1,7 @@
 import type { DiagnosisResponse } from "../types/api";
+import { Link } from "react-router-dom";
+
+import { API_BASE } from "../api/client";
 import { ChatPanel } from "./ChatPanel";
 import { DemoBanner } from "./DemoBanner";
 
@@ -86,6 +89,11 @@ export function DiagnosisResults({ result }: { result: DiagnosisResponse }) {
       </article>
 
       <ChatPanel sessionId={result.session_id} isMock={result.is_mock} />
+
+      <article className="panel report-actions">
+        <div><p className="eyebrow">Continue and export</p><h2>Ask or save this result</h2><p className="muted">Reports preserve warnings, provenance, sources, and model status.</p></div>
+        <div className="button-row"><Link className="button primary" to={`/ask?diagnosis=${result.session_id}`}>Open diagnosis-aware chat</Link><a className="button secondary" href={`${API_BASE}/reports/diagnosis/${result.session_id}.html`} target="_blank" rel="noreferrer">HTML report</a><a className="button secondary" href={`${API_BASE}/reports/diagnosis/${result.session_id}.pdf`}>PDF report</a><a className="button secondary" href={`${API_BASE}/reports/diagnosis/${result.session_id}.json`}>JSON evidence</a></div>
+      </article>
 
       {result.warnings.length > 0 && (
         <article className="panel warnings">

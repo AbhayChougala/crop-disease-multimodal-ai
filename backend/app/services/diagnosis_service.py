@@ -10,6 +10,7 @@ import numpy as np
 
 from backend.app.core.config import Settings
 from backend.app.schemas.diagnosis import DiagnosisResponse, PreprocessPreviewResponse
+from backend.app.services.diagnosis_archive import save_diagnosis
 from backend.app.services.knowledge_service import get_knowledge_service
 from backend.app.services.llm_service import get_llm_provider
 from backend.app.services.model_manager import ModelManager, get_model_manager
@@ -17,6 +18,7 @@ from backend.app.services.session_store import session_store
 from crop_ai.cv.decode import decode_image, encode_jpeg, encode_png
 from crop_ai.cv.preprocessing import preprocess_image
 from crop_ai.cv.severity import calculate_severity
+from crop_ai.device import get_device_info
 from crop_ai.evidence.builder import build_evidence
 from crop_ai.llm.base import ProviderUnavailable
 
@@ -219,6 +221,13 @@ class DiagnosisService:
                 "llm": round(llm_ms, 2),
                 "total": round((time.perf_counter() - started) * 1000, 2),
             },
+            "runtime": {
+                "device": get_device_info().selected,
+                "model_mode": model_status.state,
+                "model_loaded": model_status.loaded,
+            },
             "warnings": warnings,
         }
-        return DiagnosisResponse.model_validate(payload)
+        response = DiagnosisResponse.model_validate(payload)
+        save_diagnosis(session_id, response.model_dump(mode="json"))
+        return response

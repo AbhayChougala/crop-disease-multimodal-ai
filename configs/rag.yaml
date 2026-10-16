@@ -2,8 +2,16 @@ manifest: knowledge/source_manifest.csv
 source_root: knowledge/source_docs
 chunks_path: data/vectorstore/chunks.json
 index_path: data/vectorstore/tfidf.joblib
-provider: tfidf
+retriever: tfidf
+semantic_index_path: data/vectorstore/semantic.faiss
+semantic_metadata_path: data/vectorstore/semantic.metadata.json
+embedding_provider: sentence_transformers
+embedding_model: sentence-transformers/all-MiniLM-L6-v2
 chunk_size: 900
 chunk_overlap: 120
-top_k: 4
-# Sentence-transformer/FAISS providers may be added later; model downloads must be explicit.
+minimum_chunk_length: 100
+top_k: 5
+hybrid:
+  lexical_weight: 0.5
+  semantic_weight: 0.5
+# Set embedding_model explicitly before semantic/hybrid indexing. Downloads are never implicit.
