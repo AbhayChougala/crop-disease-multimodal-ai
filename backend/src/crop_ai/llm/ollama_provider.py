@@ -58,6 +58,23 @@ class OllamaProvider:
         except (httpx.HTTPError, KeyError, ValueError) as exc:
             raise ProviderUnavailable(f"Ollama generation failed: {type(exc).__name__}") from exc
 
+    async def complete_structured(self, system: str, user: str, schema, model: str | None = None):
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json={
+                        "model": model or self.model,
+                        "prompt": f"{system}\n\n{user}",
+                        "stream": False,
+                        "format": schema.model_json_schema(),
+                    },
+                )
+                response.raise_for_status()
+            return schema.model_validate(json.loads(response.json()["response"]))
+        except (httpx.HTTPError, KeyError, ValueError) as exc:
+            raise ProviderUnavailable(f"Ollama generation failed: {type(exc).__name__}") from exc
+
     async def stream(
         self, evidence, question, passages=None, history=None, preferred_language="en"
     ):

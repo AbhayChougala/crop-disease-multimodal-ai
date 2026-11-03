@@ -1,8 +1,9 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { createChatSession, deleteChatSession, sendSessionMessage } from "../api/client";
-import type { ChatCitation, ChatMessage, ChatResponse, ChatSession } from "../types/api";
+import { createChatSession, deleteChatSession, diagnoseImage, reassessSession, sendSessionMessage } from "../api/client";
+import { AgentInsights, agentMetadata } from "../components/AgentInsights";
+import type { ChatCitation, ChatMessage, ChatResponse, ChatSession, GeoLocation } from "../types/api";
 
 const starterQuestions = [
   "What evidence should I collect before asking an expert?",
@@ -16,7 +17,7 @@ function responseMessage(response: ChatResponse): ChatMessage {
     role: "assistant",
     content: response.answer,
     citations: response.sources,
-    metadata: response.metadata,
+    metadata: agentMetadata(response),
     created_at: response.created_at,
   };
 }
@@ -35,6 +36,24 @@ export function AskCropAIPage() {
   const [lastQuestion, setLastQuestion] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<ChatResponse["metadata"] | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [location, setLocation] = useState<GeoLocation | null>(null);
+  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  // Grow the input with its content (pasted prompts included); CSS max-height caps it.
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.style.height = "auto";
+    input.style.height = `${input.scrollHeight + 2}px`;
+  }, [draft]);
+
+  // Keep the newest message in view.
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, sending]);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +99,7 @@ export function AskCropAIPage() {
     setSending(true);
     setError(null);
     try {
-      const response = await sendSessionMessage(session.session_id, question, language);
+      const response = await sendSessionMessage(session.session_id, question, language, location);
       setMessages((items) => [...items, responseMessage(response)]);
       setCitations(response.sources);
       setMetadata(response.metadata);
@@ -90,6 +109,58 @@ export function AskCropAIPage() {
     } finally {
       setSending(false);
     }
+  }
+
+  function shareLocation() {
+    if (!navigator.geolocation) {
+      setLocationNote("Location is not available in this browser.");
+      return;
+    }
+    setLocationNote("Getting location…");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: Math.round(position.coords.latitude * 100) / 100,
+          longitude: Math.round(position.coords.longitude * 100) / 100,
+        });
+        setLocationNote("Location shared for the weather check (rounded to ~1 km).");
+      },
+      () => setLocationNote("Location permission was denied; weather will be skipped."),
+      { timeout: 10000 },
+    );
+  }
+
+  async function reassessWithPhoto(file: File) {
+    if (!session || sending) return;
+    const now = new Date().toISOString();
+    setMessages((items) => [...items, {
+      message_id: `pending-${now}`,
+      role: "user",
+      content: `New photo uploaded: ${file.name}. Has it improved?`,
+      citations: [],
+      metadata: {},
+      created_at: now,
+    }]);
+    setSending(true);
+    setError(null);
+    try {
+      const diagnosis = await diagnoseImage(file);
+      const response = await reassessSession(session.session_id, diagnosis.session_id, location);
+      setMessages((items) => [...items, responseMessage(response)]);
+      setCitations(response.sources);
+      setMetadata(response.metadata);
+      setWarnings(response.warnings);
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "Reassessment failed.");
+    } finally {
+      setSending(false);
+      if (photoRef.current) photoRef.current.value = "";
+    }
+  }
+
+  function pickQuestion(question: string) {
+    setDraft(`${question} `);
+    inputRef.current?.focus();
   }
 
   async function resetChat() {
@@ -112,25 +183,23 @@ export function AskCropAIPage() {
 
   return (
     <main className="page-shell ask-page">
-      <section className="page-intro ask-intro">
-        <div><p className="eyebrow">Grounded agricultural assistant</p><h1>Ask CropAI</h1><p>Answers use retrieved sources when available and abstain when evidence is missing.</p></div>
-        <div className="chat-toolbar">
-          <label>Language scaffold<select value={language} onChange={(event) => setLanguage(event.target.value as "en" | "kn" | "hi")}><option value="en">English</option><option value="kn">ಕನ್ನಡ</option><option value="hi">हिन्दी</option></select></label>
-          <button className="button secondary" type="button" onClick={resetChat}>New general chat</button>
-        </div>
-      </section>
-
       <div className="ask-layout">
         <section className="panel ask-conversation">
-          <div className="chat-status"><span className="status-dot" /> <strong>{modeLabel}</strong><small>{session ? `Session ${session.session_id.slice(0, 8)}` : "Starting session…"}</small></div>
-          {session?.mode === "diagnosis" && <div className="callout">Visual evidence from diagnosis {session.diagnosis_id?.slice(0, 8)} is attached. Retrieved knowledge remains separate from model evidence.</div>}
-          <div className="suggestion-row">{starterQuestions.map((question) => <button key={question} type="button" disabled={!session || sending} onClick={() => submit(undefined, question)}>{question}</button>)}</div>
-          <div className="conversation ask-thread" aria-live="polite">
-            {!loading && messages.length === 0 && <div className="empty-chat"><strong>Ask a focused crop-health question.</strong><p>Include the crop, visible symptoms, location context, and uncertainty. Do not include secrets or personal information.</p></div>}
-            {messages.map((item) => <article className={`message ${item.role}`} key={item.message_id}><div className="message-heading"><strong>{item.role === "user" ? "You" : "CropAI"}</strong><time>{new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div><p>{item.content}</p>{item.citations.length > 0 && <button type="button" className="citation-link" onClick={() => setCitations(item.citations)}>{item.citations.length} cited passage{item.citations.length === 1 ? "" : "s"}</button>}{item.role === "assistant" && <button type="button" className="copy-link" onClick={() => navigator.clipboard.writeText(item.content)}>Copy</button>}</article>)}
-            {sending && <div className="message assistant loading-message">Retrieving evidence and preparing a cautious response…</div>}
+          <div className="chat-status">
+            <h1 className="sr-only">Ask CropAI</h1>
+            <span className="status-dot" /> <strong>Ask CropAI · {modeLabel}</strong><small>{session ? `Session ${session.session_id.slice(0, 8)}` : "Starting session…"}</small>
+            <label className="sr-only" htmlFor="ask-language">Language</label>
+            <select id="ask-language" value={language} onChange={(event) => setLanguage(event.target.value as "en" | "kn" | "hi")}><option value="en">English</option><option value="kn">ಕನ್ನಡ</option><option value="hi">हिन्दी</option></select>
+            <button className="button secondary" type="button" onClick={resetChat}>New chat</button>
           </div>
-          <form className="ask-form" onSubmit={submit}><label className="sr-only" htmlFor="ask-message">Question</label><textarea id="ask-message" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (draft.trim() && !sending && session) void submit(); } }} maxLength={2000} placeholder="Ask about crop symptoms, uncertainty, prevention evidence… (Enter to send, Shift+Enter for a new line)" /><button className="button primary" disabled={!draft.trim() || sending || !session}>Send</button></form>
+          {session?.mode === "diagnosis" && <div className="callout">Visual evidence from diagnosis {session.diagnosis_id?.slice(0, 8)} is attached. A team of CropAI agents diagnoses, checks trusted fact sheets, assesses risk and plans treatment and follow-up.</div>}
+          {session?.mode === "diagnosis" && <div className="agent-toolbar"><button type="button" className="button secondary" onClick={shareLocation} disabled={Boolean(location)}>{location ? "Location shared ✓" : "Share location for weather"}</button><button type="button" className="button secondary" onClick={() => photoRef.current?.click()} disabled={sending}>Reassess with new photo</button><input ref={photoRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void reassessWithPhoto(file); }} />{locationNote && <small className="muted">{locationNote}</small>}</div>}
+          <div className="conversation ask-thread" aria-live="polite" ref={threadRef}>
+            {!loading && messages.length === 0 && <div className="empty-chat"><strong>Ask a focused crop-health question.</strong><p>Include the crop, visible symptoms, location context, and uncertainty. Do not include secrets or personal information.</p><div className="suggestion-row">{starterQuestions.map((question) => <button key={question} type="button" disabled={!session || sending} onClick={() => submit(undefined, question)}>{question}</button>)}</div></div>}
+            {messages.map((item) => <article className={`message ${item.role}`} key={item.message_id}><div className="message-heading"><strong>{item.role === "user" ? "You" : "CropAI"}</strong><time>{new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div><p>{item.content}</p>{item.role === "assistant" && <AgentInsights metadata={item.metadata} onPickQuestion={pickQuestion} />}{item.citations.length > 0 && <button type="button" className="citation-link" onClick={() => setCitations(item.citations)}>{item.citations.length} cited passage{item.citations.length === 1 ? "" : "s"}</button>}{item.role === "assistant" && <button type="button" className="copy-link" onClick={() => navigator.clipboard.writeText(item.content)}>Copy</button>}</article>)}
+            {sending && <div className="message assistant loading-message">{session?.mode === "diagnosis" ? "CropAI agents are working: checking evidence, diagnosing, assessing risk and planning…" : "Retrieving evidence and preparing a cautious response…"}</div>}
+          </div>
+          <form className="ask-form" onSubmit={submit}><label className="sr-only" htmlFor="ask-message">Question</label><textarea id="ask-message" ref={inputRef} rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (draft.trim() && !sending && session) void submit(); } }} maxLength={2000} placeholder="Ask about crop symptoms, uncertainty, prevention evidence… (Enter to send, Shift+Enter for a new line)" /><button className="button primary" disabled={!draft.trim() || sending || !session}>Send</button>{draft.length > 1500 && <small className="char-count">{draft.length}/2000</small>}</form>
           {error && <div className="chat-error" role="alert">{error}{lastQuestion && <button type="button" onClick={() => submit(undefined, lastQuestion)}>Retry</button>}</div>}
           <p className="muted chat-disclaimer">Decision support only. Verify important actions with a qualified agricultural expert.</p>
         </section>

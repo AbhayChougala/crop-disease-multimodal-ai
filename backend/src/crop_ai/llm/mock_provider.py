@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from crop_ai.llm.base import ProviderCapabilities, ProviderStatus
+from crop_ai.llm.base import ProviderCapabilities, ProviderStatus, ProviderUnavailable
 from crop_ai.rag.contracts import RetrievedPassage
 
 
@@ -71,6 +71,10 @@ class MockLLMProvider:
     ):
         response = await self.generate(evidence, question, passages, history, preferred_language)
         yield response["answer"]
+
+    async def complete_structured(self, system: str, user: str, schema, model: str | None = None):
+        """The demo provider never fabricates agent output; callers use rule-based fallbacks."""
+        raise ProviderUnavailable("Demo provider does not generate structured agent output.")
 
     async def health(self) -> ProviderStatus:
         return ProviderStatus("mock", self.model, "DEMO", "Deterministic offline provider")

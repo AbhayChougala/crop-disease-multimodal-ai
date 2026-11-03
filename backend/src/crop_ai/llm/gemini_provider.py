@@ -99,9 +99,31 @@ class GeminiProvider:
             "usage": usage.model_dump(exclude_none=True) if usage else None,
         }
 
-    async def _generate_with_fallback(self, prompt: str, config: Any, errors: Any):
+    async def complete_structured(self, system: str, user: str, schema, model: str | None = None):
+        from google.genai import errors
+
+        config = self._genai.types.GenerateContentConfig(
+            system_instruction=system,
+            response_mime_type="application/json",
+            response_schema=schema,
+            temperature=0.2,
+        )
+        primary = model or self.model
+        models = [
+            primary,
+            *[item for item in [self.model, *self.fallback_models] if item != primary],
+        ]
+        response, _ = await self._generate_with_fallback(user, config, errors, models)
+        parsed = response.parsed
+        if not isinstance(parsed, schema):
+            raise ProviderUnavailable("Gemini returned no validated structured output.")
+        return parsed
+
+    async def _generate_with_fallback(
+        self, prompt: str, config: Any, errors: Any, models: list[str] | None = None
+    ):
         failures: list[str] = []
-        for model in [self.model, *self.fallback_models]:
+        for model in models or [self.model, *self.fallback_models]:
             backends = self._backends()
             backend_index = 0
             attempt = 0
@@ -116,7 +138,8 @@ class GeminiProvider:
                     if code in _AUTH_CODES and backend_index + 1 < len(backends):
                         backend_index += 1  # key belongs to the other Gemini backend
                         continue
-                    if code in _TRANSIENT_CODES and attempt == 0:
+                    # A 504 already used the full timeout; retrying the same model doubles the wait.
+                    if code in _TRANSIENT_CODES and code != 504 and attempt == 0:
                         attempt += 1
                         await asyncio.sleep(_RETRY_DELAY_SECONDS)
                         continue

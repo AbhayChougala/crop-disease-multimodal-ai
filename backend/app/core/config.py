@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     gemini_backend: Literal["auto", "developer", "vertex"] = "auto"
     # Comma-separated models tried in order when LLM_MODEL is retired, overloaded or rate limited.
     llm_fallback_models: str = ""
+    # Multi-agent consultation in diagnosis chat (orchestrator LLM + agents + tools).
+    agents_enabled: bool = True
+    agent_max_steps: int = Field(default=7, ge=1, le=12)
+    agent_max_llm_calls: int = Field(default=10, ge=0, le=30)
+    agent_orchestrator_model: str = ""
+    weather_enabled: bool = True
     openai_model: str = ""
     local_llm_base_url: str = ""
     local_llm_model: str = ""

@@ -17,9 +17,38 @@ class ChatRequest(BaseModel):
     preferred_language: Literal["en", "kn", "hi"] | None = None
 
 
+class Location(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 class SessionMessageRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     preferred_language: Literal["en", "kn", "hi"] | None = None
+    location: Location | None = None
+
+
+class ReassessRequest(BaseModel):
+    diagnosis_id: str = Field(min_length=1, max_length=100)
+    location: Location | None = None
+
+
+class AgentStepOut(BaseModel):
+    action: str
+    agent: str
+    status: str
+    summary: str
+    decided_by: str
+    reason: str = ""
+    ms: float = 0.0
+
+
+class FollowUpOut(BaseModel):
+    reinspect_in_days: int
+    due_date: str
+    what_to_check: list[str] = Field(default_factory=list)
+    escalate_if: list[str] = Field(default_factory=list)
+    reassessment: str = ""
 
 
 class ChatCitation(BaseModel):
@@ -59,6 +88,10 @@ class ChatResponse(BaseModel):
     preferred_language: str = "en"
     created_at: str
     metadata: GenerationMetadata
+    agent_trace: list[AgentStepOut] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+    follow_up: FollowUpOut | None = None
+    risk_level: str | None = None
 
 
 class ChatSessionResponse(BaseModel):

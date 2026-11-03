@@ -38,6 +38,7 @@ crop-disease-multimodal-ai/
 │   │   ├── cv/ models/ training/ segmentation/ explainability/ evidence/ data/ evaluation/
 │   │   ├── rag/            ingest, chunking, TF-IDF / FAISS / hybrid retrieval
 │   │   ├── llm/            providers (mock, openai, gemini, ollama), prompts.py, formatting.py
+│   │   ├── agents/         multi-agent team: orchestrator, agents, tools, safety, compose
 │   │   └── reports/ experiments/ device.py
 │   ├── training/       thin CLI wrappers only; logic belongs in crop_ai
 │   ├── scripts/        run_backend.sh, run_frontend.sh, check_environment.py, check_llm.py,
@@ -60,6 +61,7 @@ Placement rules:
 | New API endpoint | `app/api/routes/`, `app/schemas/`, `app/services/`, `frontend/src/api/client.ts`, `frontend/src/types/api.ts`, `tests/integration/` |
 | New LLM provider | `src/crop_ai/llm/<name>_provider.py` (return `advisory_payload(...)`), `llm/factory.py`, `app/core/config.py`, `.env.example`, `tests/unit/` |
 | Change chatbot behaviour or tone | `src/crop_ai/llm/prompts.py` (ROLE/SCOPE/SAFETY/STYLE), `llm/schemas.py`, `llm/formatting.py` |
+| Change the agent team (diagnosis chat) | `src/crop_ai/agents/` (`orchestrator.py` preconditions/fallback, `agents.py`, `prompts.py`, `tools.py`), `tests/unit/test_agent_*.py`; see `docs/agent_architecture.md` |
 | New setting | `app/core/config.py` **and** `backend/.env.example` |
 | New knowledge source | add to `SOURCES` in `scripts/fetch_knowledge_sources.py`, then run it and `scripts/build_knowledge_base.sh` |
 | New frontend page | `frontend/src/pages/`, route in `App.tsx`, link in `components/Navbar.tsx` |
@@ -92,12 +94,17 @@ python scripts/check_llm.py                           # one real LLM call throug
 ## Current state
 
 - Classifier: no trained checkpoint yet, so `MODEL_MODE=mock` and diagnoses are DEMO placeholders.
-- Chatbot: retrieve passages, then the LLM returns a structured `GroundedAdvisory`, citation IDs are
+- Diagnosis chat: an LLM orchestrator coordinates an agent team (evidence, diagnosis, clarifying
+  questions, risk + Open-Meteo weather, treatment, follow-up/reassess) with preconditions, call/step
+  budgets and a rule-based fallback; every reply carries an `agent_trace`. See
+  `docs/agent_architecture.md`. Settings: `AGENTS_ENABLED`, `AGENT_MAX_STEPS`,
+  `AGENT_MAX_LLM_CALLS`, `AGENT_ORCHESTRATOR_MODEL`, `WEATHER_ENABLED`.
+- General chat: retrieve passages, then the LLM returns a structured `GroundedAdvisory`, citation IDs are
   intersected with retrieved IDs, and `format_advisory` renders the text. The LLM explains the
   classifier's result; it never classifies. Real providers are never called when retrieval is empty.
 - Scope: the prompt only allows crop/plant-health topics; off-topic answers set `in_scope=false`
   and `advisory_payload` strips all advice and citations (status `out_of_scope`).
-- LLM: Gemini via `google-genai` (`LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-3.8-flash`,
+- LLM: Gemini via `google-genai` (`LLM_PROVIDER=gemini`, `LLM_MODEL=gemini-3.5-flash-lite`,
   `GEMINI_BACKEND=developer`, `LLM_FALLBACK_MODELS` for 404/429/503). OpenAI, Ollama and mock also
   exist. Google retires model names; check AI Studio if a model returns 404.
 - RAG: ~207 extension publications (UC IPM, TNAU India, NC State, Ohio State, UF, WSU, ...) indexed
@@ -115,5 +122,5 @@ python scripts/check_llm.py                           # one real LLM call throug
 
 ## Further docs
 
-`docs/project_structure.md` (full folder table), `docs/architecture.md`, `docs/rag_guide.md`,
+`docs/project_structure.md` (full folder table), `docs/architecture.md`, `docs/agent_architecture.md`, `docs/rag_guide.md`,
 `docs/llm_setup.md`, `docs/research_protocol.md`, `docs/gpu_handoff.md`, `README.md` (setup).

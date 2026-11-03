@@ -3,13 +3,24 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import asdict
+from datetime import date, timedelta
 from typing import Any
 
 from app.core.config import get_settings
-from app.schemas.chat import ChatCitation, ChatResponse, GenerationMetadata
+from app.schemas.chat import (
+    AgentStepOut,
+    ChatCitation,
+    ChatResponse,
+    FollowUpOut,
+    GenerationMetadata,
+)
+from app.services.agent_service import REASSESS_MESSAGE, agent_service
 from app.services.knowledge_service import get_knowledge_service
 from app.services.llm_service import get_llm_provider
 from app.services.session_store import ChatSession, session_store
+from crop_ai.agents.orchestrator import TurnResult
+from crop_ai.agents.state import AgentState
+from crop_ai.agents.tools import passages_of
 from crop_ai.llm.base import ProviderCapabilities, ProviderUnavailable
 from crop_ai.rag.contracts import RetrievedPassage
 
@@ -37,10 +48,106 @@ class ChatService:
         session: ChatSession,
         message: str,
         preferred_language: str | None = None,
+        location: dict[str, float] | None = None,
     ) -> ChatResponse:
         started = time.perf_counter()
         language = preferred_language or session.preferred_language
         session_store.append(session.session_id, "user", message)
+        if session.mode == "diagnosis" and get_settings().agents_enabled:
+            try:
+                result, state, provider = await agent_service.run_turn(
+                    session, message, location=location, language=language
+                )
+                return self._agent_response(session, result, state, provider, language, started)
+            except Exception:  # never leave the farmer without an answer
+                logger.exception("Agent consultation failed; using the single-call answer")
+        return await self._single_call(session, message, language, started)
+
+    async def reassess(
+        self,
+        session: ChatSession,
+        new_evidence: dict[str, Any],
+        preferred_language: str | None = None,
+        location: dict[str, float] | None = None,
+    ) -> ChatResponse:
+        """Compare a new photo's diagnosis with the session's previous one (feedback loop)."""
+        started = time.perf_counter()
+        language = preferred_language or session.preferred_language
+        session_store.append(session.session_id, "user", REASSESS_MESSAGE)
+        state = agent_service.prepare_reassessment(session, new_evidence)
+        result, state, provider = await agent_service.run_turn(
+            session, REASSESS_MESSAGE, location=location, language=language, state=state
+        )
+        return self._agent_response(session, result, state, provider, language, started)
+
+    def _agent_response(
+        self,
+        session: ChatSession,
+        result: TurnResult,
+        state: AgentState,
+        provider: Any,
+        language: str,
+        started: float,
+    ) -> ChatResponse:
+        settings = get_settings()
+        capabilities = provider.capabilities()
+        by_id = {item.citation_id: item for item in passages_of(state)}
+        citations = [_citation(by_id[item]) for item in result.source_ids if item in by_id]
+        actions = {step.action for step in result.steps}
+        follow_up = None
+        if state.follow_up and "plan_followup" in actions:
+            due = date.today() + timedelta(days=state.follow_up.reinspect_in_days)
+            follow_up = FollowUpOut(**state.follow_up.model_dump(), due_date=due.isoformat())
+        trace = [AgentStepOut(**step.model_dump()) for step in result.steps]
+        questions = list(state.pending_questions) if result.ended_with_questions else []
+        risk_level = state.risk.level if state.risk and "assess_risk" in actions else None
+        retrieval_ms = sum(s.ms for s in result.steps if s.action == "retrieve_evidence")
+        metadata = GenerationMetadata(
+            provider=capabilities.provider,
+            model=capabilities.model,
+            retriever=settings.rag_retriever,
+            retrieved_chunks=len(state.passages),
+            context_characters=sum(len(item.get("text", "")) for item in state.passages),
+            retrieval_ms=round(retrieval_ms, 2),
+            llm_ms=round(sum(s.ms for s in result.steps) - retrieval_ms, 2),
+            total_ms=round((time.perf_counter() - started) * 1000, 2),
+        )
+        extras = {
+            "agent_trace": [item.model_dump() for item in trace],
+            "questions": questions,
+            "follow_up": follow_up.model_dump() if follow_up else None,
+            "risk_level": risk_level,
+            "llm_calls": state.llm_calls,
+        }
+        entry = session_store.append(
+            session.session_id,
+            "assistant",
+            result.text,
+            citations=[item.model_dump() for item in citations],
+            metadata={**metadata.model_dump(), **extras},
+        )
+        return ChatResponse(
+            session_id=session.session_id,
+            message_id=entry["message_id"],
+            answer=result.text,
+            sources=citations,
+            warnings=state.warnings,
+            follow_up_suggestions=[],
+            is_mock=result.is_mock,
+            insufficient_evidence=result.status in {"insufficient_evidence", "out_of_scope"},
+            status=result.status,
+            preferred_language=language,
+            created_at=entry["created_at"],
+            metadata=metadata,
+            agent_trace=trace,
+            questions=questions,
+            follow_up=follow_up,
+            risk_level=risk_level,
+        )
+
+    async def _single_call(
+        self, session: ChatSession, message: str, language: str, started: float
+    ) -> ChatResponse:
         settings = get_settings()
         knowledge = get_knowledge_service()
         passages: list[RetrievedPassage] = []

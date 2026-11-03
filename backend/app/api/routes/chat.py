@@ -6,6 +6,7 @@ from app.schemas.chat import (
     ChatResponse,
     ChatSessionResponse,
     CreateSessionRequest,
+    ReassessRequest,
     SessionMessageRequest,
 )
 from app.services.chat_service import chat_service
@@ -73,9 +74,25 @@ async def get_messages(session_id: str) -> dict[str, object]:
 
 @router.post("/chat/sessions/{session_id}/messages", response_model=ChatResponse)
 async def send_session_message(session_id: str, request: SessionMessageRequest) -> ChatResponse:
+    location = request.location.model_dump() if request.location else None
     return await chat_service.answer(
-        _require(session_id), request.message, request.preferred_language
+        _require(session_id), request.message, request.preferred_language, location
     )
+
+
+@router.post("/chat/sessions/{session_id}/reassess", response_model=ChatResponse)
+async def reassess_session(session_id: str, request: ReassessRequest) -> ChatResponse:
+    """Link a new photo's diagnosis to this chat and let the agents compare it with the old one."""
+    session = _require(session_id)
+    if session.mode != "diagnosis":
+        raise HTTPException(status_code=409, detail="Session is not linked to a diagnosis.")
+    if request.diagnosis_id == session_id:
+        raise HTTPException(status_code=422, detail="Upload a new photo to reassess.")
+    new_diagnosis = _require(request.diagnosis_id)
+    if new_diagnosis.mode != "diagnosis" or not new_diagnosis.evidence:
+        raise HTTPException(status_code=422, detail="The new diagnosis has no evidence.")
+    location = request.location.model_dump() if request.location else None
+    return await chat_service.reassess(session, new_diagnosis.evidence, None, location)
 
 
 @router.delete("/chat/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

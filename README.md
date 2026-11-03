@@ -11,6 +11,9 @@ A research-oriented prototype that combines computer vision, explainability, kno
 - Manifest-only ingestion; TF-IDF, SentenceTransformers/FAISS, and hybrid retrieval; validated
   passage citations; Gemini/OpenAI/Ollama providers with a scoped, structured prompt; and
   deterministic offline demo chat
+- Multi-agent diagnosis chat: an LLM orchestrator coordinates evidence, diagnosis, clarifying
+  question, risk (with free Open-Meteo weather), treatment and follow-up/reassess agents, with a
+  visible agent trace ([agent architecture](docs/agent_architecture.md))
 - FastAPI model manager, durable SQLite general/diagnosis chat, HTML/PDF/JSON reports, and
   throttled real-time WebSocket inference
 - React + TypeScript diagnosis, dedicated Ask CropAI, live-camera, and research interface

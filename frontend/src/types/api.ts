@@ -84,7 +84,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   citations: ChatCitation[];
-  metadata: Record<string, string | number | boolean>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -98,6 +98,29 @@ export interface ChatSession {
   created_at: string;
   updated_at: string;
   messages: ChatMessage[];
+}
+
+export interface AgentStep {
+  action: string;
+  agent: string;
+  status: "ok" | "fallback" | "skipped" | "error";
+  summary: string;
+  decided_by: "llm" | "rule";
+  reason: string;
+  ms: number;
+}
+
+export interface FollowUp {
+  reinspect_in_days: number;
+  due_date: string;
+  what_to_check: string[];
+  escalate_if: string[];
+  reassessment: string;
+}
+
+export interface GeoLocation {
+  latitude: number;
+  longitude: number;
 }
 
 export interface ChatResponse {
@@ -122,4 +145,8 @@ export interface ChatResponse {
     llm_ms: number;
     total_ms: number;
   };
+  agent_trace: AgentStep[];
+  questions: string[];
+  follow_up: FollowUp | null;
+  risk_level: string | null;
 }

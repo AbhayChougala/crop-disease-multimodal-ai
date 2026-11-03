@@ -52,7 +52,8 @@ Framework-independent. It must not import FastAPI or `app`.
 | `data/` | Dataset manifests, splits, overlap/leakage checks | Dataset preparation |
 | `evaluation/` | Metrics and plots | New metrics |
 | `rag/` | Ingest, chunking, TF-IDF/semantic/hybrid retrievers, index build, RAG eval | Retrieval changes |
-| `llm/` | Provider interface (`base.py`), mock/OpenAI/Gemini/Ollama providers, answer formatting, prompts, citation grounding | New LLM provider: a `*_provider.py` file plus a line in `factory.py`; agent/tool logic |
+| `llm/` | Provider interface (`base.py`), mock/OpenAI/Gemini/Ollama providers, answer formatting, prompts, citation grounding | New LLM provider: a `*_provider.py` file plus a line in `factory.py` |
+| `agents/` | Multi-agent diagnosis chat: `orchestrator.py` (LLM loop, preconditions, budgets, fallback), `agents.py`, `prompts.py`, `tools.py` (retrieval, weather, risk), `safety.py`, `compose.py`, `state.py` | New agent or tool; see `docs/agent_architecture.md` |
 | `reports/` | HTML/PDF/JSON diagnosis reports | Report formats |
 | `experiments/` | Experiment runner, RAG grounding experiment | New research experiments |
 | `device.py` | CUDA → MPS → CPU selection | Never hard-code `.cuda()`; use this |

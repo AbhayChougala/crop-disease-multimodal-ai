@@ -1,11 +1,13 @@
 import { type FormEvent, useState } from "react";
 
-import { sendChatMessage } from "../api/client";
+import { sendSessionMessage } from "../api/client";
+import { AgentInsights, agentMetadata } from "./AgentInsights";
 
 interface Message {
   role: "user" | "assistant";
   text: string;
   sources?: Array<{ source_id: string; title: string }>;
+  metadata?: Record<string, unknown>;
 }
 
 const suggestions = [
@@ -29,8 +31,8 @@ export function ChatPanel({ sessionId, isMock }: { sessionId: string; isMock: bo
     setLoading(true);
     setError(null);
     try {
-      const response = await sendChatMessage(sessionId, content);
-      setMessages((items) => [...items, { role: "assistant", text: response.answer, sources: response.sources }]);
+      const response = await sendSessionMessage(sessionId, content, "en");
+      setMessages((items) => [...items, { role: "assistant", text: response.answer, sources: response.sources, metadata: agentMetadata(response) }]);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Chat request failed.");
     } finally {
@@ -62,10 +64,11 @@ export function ChatPanel({ sessionId, isMock }: { sessionId: string; isMock: bo
           <div className={`message ${item.role}`} key={`${item.role}-${index}`}>
             <strong>{item.role === "user" ? "You" : "Assistant"}</strong>
             <p>{item.text}</p>
+            {item.metadata && <AgentInsights metadata={item.metadata} onPickQuestion={(question) => setMessage(`${question} `)} />}
             {item.sources && item.sources.length > 0 && <small>{item.sources.map((source) => `${source.source_id}: ${source.title}`).join(" · ")}</small>}
           </div>
         ))}
-        {loading && <p className="muted">Preparing a cautious response…</p>}
+        {loading && <p className="muted">CropAI agents are working…</p>}
       </div>
       <form className="chat-form" onSubmit={(event) => submit(event)}>
         <label className="sr-only" htmlFor="follow-up">Follow-up question</label>

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
+
+from pydantic import BaseModel
 
 from crop_ai.rag.contracts import RetrievedPassage
 
@@ -28,6 +30,9 @@ class ProviderStatus:
     detail: str | None = None
 
 
+SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+
 class LLMProvider(Protocol):
     async def generate(
         self,
@@ -46,6 +51,12 @@ class LLMProvider(Protocol):
         history: list[dict[str, str]] | None = None,
         preferred_language: str = "en",
     ) -> AsyncIterator[str]: ...
+
+    async def complete_structured(
+        self, system: str, user: str, schema: type[SchemaT], model: str | None = None
+    ) -> SchemaT:
+        """One call returning a validated instance of `schema` (used by the agent team)."""
+        ...
 
     async def health(self) -> ProviderStatus: ...
 

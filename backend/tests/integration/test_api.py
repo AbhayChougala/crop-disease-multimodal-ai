@@ -68,6 +68,49 @@ def test_chat_uses_diagnosis_session_and_preserves_history() -> None:
     assert [item["role"] for item in history.json()["messages"]] == ["user", "assistant"]
 
 
+def _diagnose() -> dict:
+    return client.post(
+        "/api/v1/diagnose",
+        files={"file": ("leaf.jpg", _image_bytes(), "image/jpeg")},
+    ).json()
+
+
+def test_diagnosis_chat_runs_agent_team_in_demo_mode() -> None:
+    diagnosis = _diagnose()
+    response = client.post(
+        f"/api/v1/chat/sessions/{diagnosis['session_id']}/messages",
+        json={"message": "What should I do?"},
+    )
+    body = response.json()
+    assert response.status_code == 200
+    assert body["is_mock"] is True
+    actions = [step["action"] for step in body["agent_trace"]]
+    assert actions[:2] == ["retrieve_evidence", "diagnose"]
+    assert {step["decided_by"] for step in body["agent_trace"]} == {"rule"}
+    assert "DEMO placeholder" in body["answer"] or body["questions"]
+    # the trace is persisted with the assistant message
+    history = client.get(f"/api/v1/chat/{diagnosis['session_id']}/history").json()["messages"]
+    assert history[-1]["metadata"]["agent_trace"]
+
+
+def test_reassess_links_new_photo_and_compares() -> None:
+    first, second = _diagnose(), _diagnose()
+    session_id = first["session_id"]
+    client.post(f"/api/v1/chat/sessions/{session_id}/messages", json={"message": "Help"})
+    response = client.post(
+        f"/api/v1/chat/sessions/{session_id}/reassess",
+        json={"diagnosis_id": second["session_id"]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "plan_followup" in [step["action"] for step in body["agent_trace"]]
+    assert body["follow_up"]["due_date"]
+    same = client.post(
+        f"/api/v1/chat/sessions/{session_id}/reassess", json={"diagnosis_id": session_id}
+    )
+    assert same.status_code == 422
+
+
 def test_chat_rejects_unknown_session() -> None:
     response = client.post(
         "/api/v1/chat",

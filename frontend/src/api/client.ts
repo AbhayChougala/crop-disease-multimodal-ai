@@ -1,4 +1,4 @@
-import type { ChatResponse, ChatSession, DiagnosisResponse } from "../types/api";
+import type { ChatResponse, ChatSession, DiagnosisResponse, GeoLocation } from "../types/api";
 
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -60,11 +60,27 @@ export async function sendSessionMessage(
   sessionId: string,
   message: string,
   preferredLanguage: "en" | "kn" | "hi",
+  location?: GeoLocation | null,
 ): Promise<ChatResponse> {
   const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, preferred_language: preferredLanguage }),
+    body: JSON.stringify({ message, preferred_language: preferredLanguage, location: location ?? undefined }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as ChatResponse;
+}
+
+/** Link a new photo's diagnosis to a diagnosis chat; the agents compare old and new. */
+export async function reassessSession(
+  sessionId: string,
+  newDiagnosisId: string,
+  location?: GeoLocation | null,
+): Promise<ChatResponse> {
+  const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}/reassess`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ diagnosis_id: newDiagnosisId, location: location ?? undefined }),
   });
   if (!response.ok) throw new Error(await parseError(response));
   return (await response.json()) as ChatResponse;

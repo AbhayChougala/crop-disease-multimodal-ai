@@ -83,6 +83,12 @@ class SessionStore:
                     ON chat_messages(session_id, created_at);
                 """
             )
+            columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(chat_sessions)")
+            }
+            if "agent_state_json" not in columns:
+                # Added for the agent team; older databases are migrated in place.
+                connection.execute("ALTER TABLE chat_sessions ADD COLUMN agent_state_json TEXT")
 
     def create(
         self,
@@ -208,6 +214,30 @@ class SessionStore:
             "metadata": metadata or {},
             "created_at": timestamp,
         }
+
+    def get_agent_state(self, session_id: str) -> dict[str, Any] | None:
+        with self._lock, self._connect() as connection:
+            row = connection.execute(
+                "SELECT agent_state_json FROM chat_sessions WHERE session_id = ?", (session_id,)
+            ).fetchone()
+        if row is None or not row["agent_state_json"]:
+            return None
+        return json.loads(row["agent_state_json"])
+
+    def put_agent_state(self, session_id: str, state: dict[str, Any]) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                "UPDATE chat_sessions SET agent_state_json = ?, updated_at = ? "
+                "WHERE session_id = ?",
+                (json.dumps(state, separators=(",", ":"), default=str), _now(), session_id),
+            )
+
+    def update_evidence(self, session_id: str, evidence: dict[str, Any]) -> None:
+        with self._lock, self._connect() as connection:
+            connection.execute(
+                "UPDATE chat_sessions SET evidence_json = ?, updated_at = ? WHERE session_id = ?",
+                (json.dumps(evidence, separators=(",", ":")), _now(), session_id),
+            )
 
     def delete(self, session_id: str) -> bool:
         with self._lock, self._connect() as connection:

@@ -69,6 +69,19 @@ class OpenAIProvider:
         except Exception as exc:
             raise ProviderUnavailable(f"OpenAI generation failed: {type(exc).__name__}") from exc
 
+    async def complete_structured(self, system: str, user: str, schema, model: str | None = None):
+        try:
+            response = await self.client.responses.parse(
+                model=model or self.model,
+                input=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                text_format=schema,
+            )
+        except Exception as exc:
+            raise ProviderUnavailable(f"OpenAI generation failed: {type(exc).__name__}") from exc
+        if response.output_parsed is None:
+            raise ProviderUnavailable("The model returned no validated structured output.")
+        return response.output_parsed
+
     async def stream(
         self, evidence, question, passages=None, history=None, preferred_language="en"
     ):
