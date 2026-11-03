@@ -1,5 +1,5 @@
 dataset: plantvillage
-root: data/raw/plantvillage
+root: data/raw/plantvillage dataset/color
 output_manifest: data/manifests/plantvillage.csv
 seed: 42
 split:

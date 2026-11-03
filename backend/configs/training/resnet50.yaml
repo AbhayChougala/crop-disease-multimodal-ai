@@ -1,7 +1,7 @@
 experiment_name: resnet50_baseline
 architecture: resnet50
 manifest: data/manifests/plantvillage.csv
-image_root: data/raw/plantvillage
+image_root: data/raw/plantvillage dataset/color
 output_dir: artifacts/models
 dataset_id: plantvillage_local
 image_size: 224
