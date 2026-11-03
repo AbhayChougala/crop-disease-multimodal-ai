@@ -36,6 +36,9 @@ from crop_ai.llm.base import ProviderUnavailable
 
 MAX_QUESTION_ROUNDS = 2
 ENDS_TURN = {"ask_farmer", "answer_question"}
+NEEDS_EVIDENCE = {"diagnose", "ask_farmer", "assess_risk", "recommend_treatment", "plan_followup"}
+NEEDS_DIAGNOSIS = NEEDS_EVIDENCE - {"diagnose"}
+DEFAULT_REQUEST = "Assess this crop and advise the farmer."
 
 
 class BudgetExceeded(RuntimeError):
@@ -267,6 +270,8 @@ class AgentOrchestrator:
             found = self.search(message, crop, disease, 5)
             known = {item["citation_id"] for item in state.passages}
             state.passages += [asdict(item) for item in found if item.citation_id not in known]
+            if self.use_llm:
+                state.llm_calls += 1
             try:
                 state.answer = await self.provider.generate(
                     state.evidence, message, found, None, language
@@ -366,6 +371,62 @@ class AgentOrchestrator:
             status=status,
             steps=list(state.steps),
         )
+
+    # ------------------------------------------------------------------ single agent
+    def prerequisites(self, action: str, state: AgentState, rediagnose: bool = False) -> list[str]:
+        """Steps that must run before `action` because their results are missing."""
+        needed: list[str] = []
+        if action in NEEDS_EVIDENCE and not state.passages:
+            needed.append("retrieve_evidence")
+        if action in NEEDS_DIAGNOSIS and (state.diagnosis is None or rediagnose):
+            needed.append("diagnose")
+        return needed
+
+    async def run_agent(
+        self,
+        state: AgentState,
+        action: str,
+        message: str = "",
+        *,
+        location: dict[str, float] | None = None,
+        language: str = "en",
+    ) -> list[AgentStep]:
+        """Run one agent chosen by the user, plus any missing prerequisites (no orchestrator).
+
+        Results stay on `state`, so agents run one after another build on each other.
+        """
+        if action not in STEP_LABELS or action == "finish":
+            raise ValueError(f"Unknown agent action: {action}")
+        state.steps, state.warnings, state.answer, state.llm_calls = [], [], None, 0
+        if location:
+            state.location = location
+        # A message sent while questions are pending is the farmer's answer to them.
+        answered = bool(state.pending_questions and message and action != "ask_farmer")
+        if answered:
+            state.qa_history.append(
+                {"question": " / ".join(state.pending_questions), "answer": message}
+            )
+            state.pending_questions = []
+
+        llm = _BudgetedLLM(self.provider, state, self.max_llm_calls, language)
+        request = message or DEFAULT_REQUEST
+        needed_reason = f"needed before the {STEP_LABELS[action]}"
+        for step in [*self.prerequisites(action, state, rediagnose=answered), action]:
+            started = time.perf_counter()
+            status, summary = await self._run_action(step, llm, state, request, language)
+            state.steps.append(
+                AgentStep(
+                    action=step,
+                    agent=STEP_LABELS[step],
+                    status=status,
+                    summary=summary,
+                    decided_by="user" if step == action else "rule",
+                    reason="requested" if step == action else needed_reason,
+                    ms=round((time.perf_counter() - started) * 1000, 1),
+                )
+            )
+        state.warnings += review(state)
+        return list(state.steps)
 
 
 def passages_for_citations(state: AgentState):

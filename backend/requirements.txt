@@ -1,0 +1,12 @@
+# Installs EVERYTHING the project uses (about 2 GB, mostly PyTorch). Run from backend/ with the
+# venv active:   python -m pip install -r requirements.txt
+#
+# The dependency list itself lives in pyproject.toml; this file only selects every optional group:
+#   dev           pytest, ruff
+#   llm           Gemini (google-genai), OpenAI, PDF reading
+#   reports       PDF reports
+#   ml            PyTorch + torchvision: the real disease classifier, Grad-CAM, training
+#   semantic-rag  FAISS + sentence-transformers: the knowledge-base vector search
+# For a smaller install pick groups yourself, e.g. python -m pip install -e '.[dev,llm,reports]'
+# NVIDIA GPU: install the CUDA build of torch from https://pytorch.org/get-started/locally/ first.
+-e .[dev,llm,reports,ml,semantic-rag]

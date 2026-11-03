@@ -22,6 +22,17 @@ AgentAction = Literal[
     "finish",
 ]
 
+# Actions a user can run on their own from the Agents page (everything except "finish").
+DirectAgent = Literal[
+    "retrieve_evidence",
+    "diagnose",
+    "ask_farmer",
+    "assess_risk",
+    "recommend_treatment",
+    "plan_followup",
+    "answer_question",
+]
+
 STEP_LABELS: dict[str, str] = {
     "retrieve_evidence": "Evidence agent",
     "diagnose": "Diagnosis agent",
@@ -107,7 +118,7 @@ class AgentStep(BaseModel):
     agent: str
     status: Literal["ok", "fallback", "skipped", "error"]
     summary: str
-    decided_by: Literal["llm", "rule"] = "rule"
+    decided_by: Literal["llm", "rule", "user"] = "rule"
     reason: str = ""
     ms: float = 0.0
 

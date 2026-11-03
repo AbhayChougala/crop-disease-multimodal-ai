@@ -111,6 +111,47 @@ def test_reassess_links_new_photo_and_compares() -> None:
     assert same.status_code == 422
 
 
+def test_single_agent_runs_prerequisites_and_remembers_results() -> None:
+    session_id = _diagnose()["session_id"]
+    first = client.post("/api/v1/agents/assess_risk/run", json={"session_id": session_id})
+    body = first.json()
+    assert first.status_code == 200 and body["is_mock"] is True
+    assert [step["action"] for step in body["steps"]] == [
+        "retrieve_evidence",
+        "diagnose",
+        "assess_risk",
+    ]
+    assert body["steps"][-1]["decided_by"] == "user"
+    assert body["output"]["level"] and body["memory"]["has_diagnosis"]
+
+    # the diagnosis is remembered, so the next agent does not redo it (tests have no knowledge
+    # base, so the cheap evidence search is simply retried)
+    second = client.post("/api/v1/agents/plan_followup/run", json={"session_id": session_id})
+    actions = [step["action"] for step in second.json()["steps"]]
+    assert "diagnose" not in actions and actions[-1] == "plan_followup"
+    assert second.json()["output"]["due_date"]
+
+    assert client.delete(f"/api/v1/agents/memory/{session_id}").status_code == 204
+    memory = client.get(f"/api/v1/agents/memory/{session_id}").json()
+    assert memory["has_diagnosis"] is False and memory["passages"] == 0
+
+
+def test_single_agent_validation() -> None:
+    session_id = _diagnose()["session_id"]
+    general = client.post("/api/v1/chat/sessions", json={"mode": "general"}).json()
+    run = "/api/v1/agents/{}/run"
+    assert client.post(run.format("finish"), json={"session_id": session_id}).status_code == 422
+    assert (
+        client.post(run.format("answer_question"), json={"session_id": session_id}).status_code
+        == 422
+    )
+    assert client.post(run.format("diagnose"), json={"session_id": "missing"}).status_code == 404
+    assert (
+        client.post(run.format("diagnose"), json={"session_id": general["session_id"]}).status_code
+        == 409
+    )
+
+
 def test_chat_rejects_unknown_session() -> None:
     response = client.post(
         "/api/v1/chat",

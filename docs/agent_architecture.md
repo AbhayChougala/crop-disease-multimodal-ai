@@ -63,6 +63,23 @@ On the Ask page in diagnosis mode, and in the diagnose page's chat panel, each r
 "Share location for weather" sends coordinates rounded to about 1 km. "Reassess with new photo"
 runs a new diagnosis and links it to the chat.
 
+## Agents page (run one agent at a time)
+
+`/agents` in the frontend analyses a photo once and then lets you run any single agent, without
+the orchestrator. Missing prerequisites run first and are marked "ran automatically" (for example,
+Treatment on a fresh photo runs evidence → diagnosis → treatment). Results are stored in the same
+per-diagnosis `AgentState` as the chat, so agents build on each other, and a message sent while the
+Question agent's questions are pending is recorded as the answers and triggers a re-diagnosis.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/agents/{agent}/run` | `{session_id, message?, location?}`; `agent` is any action except `finish`. Returns the steps, the agent's structured `output`, cited sources and the team memory |
+| `GET /api/v1/agents/memory/{session_id}` | What the team already knows for this diagnosis |
+| `DELETE /api/v1/agents/memory/{session_id}` | Forget it and start over |
+
+Code: `AgentOrchestrator.run_agent` / `prerequisites` in `orchestrator.py`,
+`app/api/routes/agents.py`, `frontend/src/pages/AgentsPage.tsx`, `components/AgentOutput.tsx`.
+
 ## Research use
 
 Each assistant message stores the trace (`agent_trace`, `llm_calls`, timings) in the chat

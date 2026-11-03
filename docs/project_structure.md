@@ -33,8 +33,8 @@ Only HTTP concerns go here: requests, validation, wiring. Domain logic belongs i
 |---|---|---|
 | `app/main.py` | App creation, CORS, router registration | Register a new router |
 | `app/core/config.py` | All settings (read from `backend/.env`) | New setting: add it here **and** to `.env.example` |
-| `app/api/routes/` | Endpoints: `diagnosis`, `chat`, `knowledge`, `reports`, `realtime` (WebSocket), `system`, `health`, `feedback`, `research` | New endpoint: a route file, or extend the matching one |
-| `app/schemas/` | Pydantic request/response models (`chat`, `diagnosis`, `system`) | API request/response types |
+| `app/api/routes/` | Endpoints: `diagnosis`, `chat`, `agents` (single-agent runs), `knowledge`, `reports`, `realtime` (WebSocket), `system`, `health`, `feedback`, `research` | New endpoint: a route file, or extend the matching one |
+| `app/schemas/` | Pydantic request/response models (`chat`, `agents`, `diagnosis`, `system`) | API request/response types |
 | `app/services/` | Orchestration: `diagnosis_service`, `chat_service`, `llm_service`, `knowledge_service`, `model_manager`, `session_store`, `diagnosis_archive` | Logic that combines several `crop_ai` pieces for a request |
 
 ## Backend: `backend/src/crop_ai/` (core library)
@@ -89,8 +89,8 @@ Framework-independent. It must not import FastAPI or `app`.
 | Path | Contains | Put new… here |
 |---|---|---|
 | `src/main.tsx`, `src/App.tsx` | Entry point and routes | Register a new page route |
-| `src/pages/` | `HomePage`, `DiagnosePage`, `AskCropAIPage`, `LiveCameraPage`, `ResearchPage`, `AboutPage` | New full page |
-| `src/components/` | `ChatPanel`, `DiagnosisResults`, `DemoBanner`, `Navbar` | Reusable UI pieces |
+| `src/pages/` | `HomePage`, `DiagnosePage`, `AskCropAIPage`, `AgentsPage` (run one agent at a time), `LiveCameraPage`, `ResearchPage`, `AboutPage` | New full page |
+| `src/components/` | `ChatPanel`, `AgentInsights`, `AgentOutput`, `DiagnosisResults`, `DemoBanner`, `Navbar` | Reusable UI pieces |
 | `src/api/client.ts` | All backend calls (REST and WebSocket URLs) | New API call; don't call `fetch` from components |
 | `src/types/api.ts` | TypeScript types mirroring backend schemas | Keep in sync with `backend/app/schemas/` |
 | `src/styles/main.css` | Global styles | Styles |

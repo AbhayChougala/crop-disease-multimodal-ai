@@ -105,7 +105,7 @@ export interface AgentStep {
   agent: string;
   status: "ok" | "fallback" | "skipped" | "error";
   summary: string;
-  decided_by: "llm" | "rule";
+  decided_by: "llm" | "rule" | "user";
   reason: string;
   ms: number;
 }
@@ -149,4 +149,37 @@ export interface ChatResponse {
   questions: string[];
   follow_up: FollowUp | null;
   risk_level: string | null;
+}
+
+export type AgentName =
+  | "retrieve_evidence"
+  | "diagnose"
+  | "ask_farmer"
+  | "assess_risk"
+  | "recommend_treatment"
+  | "plan_followup"
+  | "answer_question";
+
+export interface AgentMemory {
+  passages: number;
+  has_diagnosis: boolean;
+  has_risk: boolean;
+  has_treatment: boolean;
+  has_follow_up: boolean;
+  pending_questions: string[];
+  answered_questions: number;
+}
+
+/** `output` is the agent's own structured result; its shape depends on `agent`. */
+export interface AgentRunResponse {
+  session_id: string;
+  agent: AgentName;
+  steps: AgentStep[];
+  output: Record<string, unknown> | null;
+  sources: ChatCitation[];
+  warnings: string[];
+  memory: AgentMemory;
+  is_mock: boolean;
+  llm_calls: number;
+  total_ms: number;
 }

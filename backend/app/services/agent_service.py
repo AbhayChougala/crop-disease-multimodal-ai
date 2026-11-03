@@ -8,7 +8,7 @@ from app.services.knowledge_service import get_knowledge_service
 from app.services.llm_service import get_llm_provider
 from app.services.session_store import ChatSession, session_store
 from crop_ai.agents.orchestrator import AgentOrchestrator, TurnResult
-from crop_ai.agents.state import AgentState
+from crop_ai.agents.state import AgentState, AgentStep
 from crop_ai.agents.tools import fetch_weather
 from crop_ai.llm.base import ProviderUnavailable
 from crop_ai.llm.mock_provider import MockLLMProvider
@@ -73,6 +73,28 @@ class AgentService:
         result = await orchestrator.run_turn(state, message, location=location, language=language)
         session_store.put_agent_state(session.session_id, state.model_dump(mode="json"))
         return result, state, provider
+
+    async def run_agent(
+        self,
+        session: ChatSession,
+        action: str,
+        message: str = "",
+        *,
+        location: dict[str, float] | None = None,
+        language: str = "en",
+    ) -> tuple[list[AgentStep], AgentState, bool]:
+        """Run one agent from the Agents page; returns (steps, state, is_mock)."""
+        orchestrator, _ = self._orchestrator()
+        state = self.load_state(session)
+        steps = await orchestrator.run_agent(
+            state, action, message, location=location, language=language
+        )
+        session_store.put_agent_state(session.session_id, state.model_dump(mode="json"))
+        return steps, state, not orchestrator.use_llm
+
+    def reset(self, session: ChatSession) -> None:
+        """Forget everything the agents worked out for this diagnosis."""
+        session_store.put_agent_state(session.session_id, {})
 
     def prepare_reassessment(
         self, session: ChatSession, new_evidence: dict[str, Any]

@@ -1,4 +1,12 @@
-import type { ChatResponse, ChatSession, DiagnosisResponse, GeoLocation } from "../types/api";
+import type {
+  AgentMemory,
+  AgentName,
+  AgentRunResponse,
+  ChatResponse,
+  ChatSession,
+  DiagnosisResponse,
+  GeoLocation,
+} from "../types/api";
 
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -88,5 +96,32 @@ export async function reassessSession(
 
 export async function deleteChatSession(sessionId: string): Promise<void> {
   const response = await fetch(`${API_BASE}/chat/sessions/${sessionId}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(await parseError(response));
+}
+
+/** Run one agent on its own for a diagnosis (missing prerequisites run first). */
+export async function runAgent(
+  agent: AgentName,
+  sessionId: string,
+  message: string,
+  location?: GeoLocation | null,
+): Promise<AgentRunResponse> {
+  const response = await fetch(`${API_BASE}/agents/${agent}/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, message, location: location ?? undefined }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as AgentRunResponse;
+}
+
+export async function loadAgentMemory(sessionId: string): Promise<AgentMemory> {
+  const response = await fetch(`${API_BASE}/agents/memory/${sessionId}`);
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as AgentMemory;
+}
+
+export async function resetAgentMemory(sessionId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/agents/memory/${sessionId}`, { method: "DELETE" });
   if (!response.ok) throw new Error(await parseError(response));
 }

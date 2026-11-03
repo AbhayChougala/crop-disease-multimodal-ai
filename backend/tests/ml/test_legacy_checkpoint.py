@@ -7,9 +7,12 @@ pytest.importorskip("torchvision")
 
 from crop_ai.models.checkpoints import load_model_from_checkpoint
 
+CHECKPOINT = Path(__file__).parents[2] / "model" / "checkpoints" / "best_model.pth"
 
+
+@pytest.mark.skipif(not CHECKPOINT.exists(), reason="run python model/download_model.py first")
 def test_legacy_efficientnet_checkpoint_loads() -> None:
-    checkpoint = Path(__file__).parents[2] / "model" / "best_model.pth"
+    checkpoint = CHECKPOINT
     model, labels, metadata, transform = load_model_from_checkpoint(
         checkpoint, torch.device("cpu")
     )

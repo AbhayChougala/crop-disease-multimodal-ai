@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Comma-separated list of browser origins allowed by CORS.
     frontend_origin: str = "http://localhost:5173,http://127.0.0.1:5173"
     model_mode: Literal["mock", "real"] = "real"
-    model_path: Path = Path("model/best_model.pth")
+    model_path: Path = Path("model/checkpoints/best_model.pth")
     model_arch: str = "efficientnet_b0"
     model_labels_path: Path = Path("artifacts/models/labels.json")
     confidence_threshold: float = Field(default=0.65, ge=0, le=1)

@@ -18,9 +18,7 @@ class ClassLabel:
             if len(parts) != 2:
                 raise ValueError(f"Class '{value}' must use the canonical 'crop__disease' format.")
             crop, disease = parts
-            return cls(
-                index, value, crop.replace("_", " ").title(), disease.replace("_", " ").title()
-            )
+            return cls(index, value, _readable(crop), _readable(disease))
         class_id = str(value.get("class_id", ""))
         crop = str(value.get("crop", ""))
         disease = str(value.get("disease", ""))
@@ -30,6 +28,11 @@ class ClassLabel:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _readable(part: str) -> str:
+    # PlantVillage folders use "Crop___Disease" (three underscores) and stray trailing "_".
+    return " ".join(part.replace("_", " ").split()).title()
 
 
 @dataclass(frozen=True)

@@ -77,6 +77,7 @@ by git.
 # backend (from backend/), Python 3.12-3.14 only
 python3.12 -m venv .venv && source .venv/bin/activate
 python -m pip install -e '.[dev,llm,reports]'        # + rag / semantic-rag / ml when needed
+python -m pip install -e '.[ml]' && python model/download_model.py   # real classifier
 python scripts/check_environment.py
 scripts/run_backend.sh                                # uvicorn on :8000, reloads on app/ src/ only
 ruff check . && pytest                                # must pass before finishing
@@ -93,11 +94,16 @@ python scripts/check_llm.py                           # one real LLM call throug
 
 ## Current state
 
-- Classifier: no trained checkpoint yet, so `MODEL_MODE=mock` and diagnoses are DEMO placeholders.
+- Classifier: EfficientNet-B0 trained on PlantVillage (38 classes), downloaded by
+  `python model/download_model.py` to `model/checkpoints/best_model.pth` (git-ignored, SHA-256
+  checked), loaded through the legacy adapter in `models/checkpoints.py`. Needs `'.[ml]'` and
+  `MODEL_MODE=real`; `MODEL_MODE=mock` gives DEMO placeholders. Its reported validation F1 comes
+  from the external training run, not from this project: measure accuracy on held-out data before
+  quoting it, and expect lower accuracy on field photos than on lab-style PlantVillage images.
 - Diagnosis chat: an LLM orchestrator coordinates an agent team (evidence, diagnosis, clarifying
   questions, risk + Open-Meteo weather, treatment, follow-up/reassess) with preconditions, call/step
-  budgets and a rule-based fallback; every reply carries an `agent_trace`. See
-  `docs/agent_architecture.md`. Settings: `AGENTS_ENABLED`, `AGENT_MAX_STEPS`,
+  budgets and a rule-based fallback; every reply carries an `agent_trace`. The `/agents` page runs
+  any single agent directly (`POST /api/v1/agents/{agent}/run`). See `docs/agent_architecture.md`. Settings: `AGENTS_ENABLED`, `AGENT_MAX_STEPS`,
   `AGENT_MAX_LLM_CALLS`, `AGENT_ORCHESTRATOR_MODEL`, `WEATHER_ENABLED`.
 - General chat: retrieve passages, then the LLM returns a structured `GroundedAdvisory`, citation IDs are
   intersected with retrieved IDs, and `format_advisory` renders the text. The LLM explains the

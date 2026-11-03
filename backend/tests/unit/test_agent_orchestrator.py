@@ -250,6 +250,40 @@ def test_reassessment_cannot_end_in_qa_and_keeps_photo_comparison() -> None:
     assert state.previous_evidence is None  # comparison done, not repeated next turn
 
 
+def test_single_treatment_agent_runs_missing_prerequisites_only() -> None:
+    provider = FakeProvider([], _outputs())
+    orchestrator = AgentOrchestrator(provider, _search)
+    state = AgentState(evidence=EVIDENCE)
+    steps = asyncio.run(orchestrator.run_agent(state, "recommend_treatment"))
+    actions = [step.action for step in steps]
+    assert actions == ["retrieve_evidence", "diagnose", "recommend_treatment"]
+    assert [step.decided_by for step in steps] == ["rule", "rule", "user"]
+    assert "OrchestratorDecision" not in provider.calls  # no orchestrator for single agents
+    # safety review still applies: the uncited chemical item is dropped
+    assert len([i for i in state.treatment.items if i.category == "chemical"]) == 1
+
+    again = asyncio.run(orchestrator.run_agent(state, "assess_risk"))
+    assert [step.action for step in again] == ["assess_risk"]
+
+
+def test_single_agent_records_answers_and_rediagnoses() -> None:
+    provider = FakeProvider([], _outputs(DifferentialDiagnosis=_diagnosis(True)))
+    orchestrator = AgentOrchestrator(provider, _search)
+    state = AgentState(evidence=EVIDENCE)
+    asyncio.run(orchestrator.run_agent(state, "ask_farmer"))
+    assert state.pending_questions == ["Do the spots have rings?"]
+
+    steps = asyncio.run(orchestrator.run_agent(state, "recommend_treatment", "Yes, rings"))
+    assert state.qa_history[-1]["answer"] == "Yes, rings"
+    assert [step.action for step in steps] == ["diagnose", "recommend_treatment"]
+
+
+def test_single_agent_rejects_finish() -> None:
+    orchestrator = AgentOrchestrator(FakeProvider([], _outputs()), _search)
+    with pytest.raises(ValueError):
+        asyncio.run(orchestrator.run_agent(AgentState(evidence=EVIDENCE), "finish"))
+
+
 def test_qa_turn_text_is_passed_through_unchanged() -> None:
     answer = {
         "answer": "Use copper.\n\nSources: EB-C0001",

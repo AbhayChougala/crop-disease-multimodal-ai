@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import (
+    agents,
     chat,
     diagnosis,
     feedback,
@@ -65,6 +66,7 @@ routes = (
     system.router,
     diagnosis.router,
     chat.router,
+    agents.router,
     knowledge.router,
     reports.router,
     feedback.router,
