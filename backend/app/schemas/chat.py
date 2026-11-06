@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 class CreateSessionRequest(BaseModel):
     mode: Literal["general", "diagnosis"] = "general"
     diagnosis_id: str | None = Field(default=None, min_length=1, max_length=100)
+    # General mode only: the chatbot answers with this project's photos and diagnoses as context.
+    project_id: str | None = Field(default=None, min_length=1, max_length=100)
     preferred_language: Literal["en", "kn", "hi"] = "en"
 
 
@@ -98,6 +100,7 @@ class ChatSessionResponse(BaseModel):
     session_id: str
     mode: Literal["general", "diagnosis"]
     diagnosis_id: str | None = None
+    project_id: str | None = None
     provider: str
     model: str
     preferred_language: str

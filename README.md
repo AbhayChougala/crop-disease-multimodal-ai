@@ -238,6 +238,8 @@ No need to activate the venv for these scripts. The backend only reloads on code
 | **Live Camera** | Point the camera at a leaf for throttled real-time predictions. |
 | **Ask CropAI** | General crop-health chat, or a diagnosis chat answered by the agent team. Replies show clarifying-question chips, a risk badge, the re-check date and a "How CropAI worked this out" trace. **Share location** adds weather; **Reassess with new photo** compares a new photo with the old one. |
 | **Agents** | Analyse a photo once, then run a single agent: Doctor, Evidence researcher, Question agent, Risk & weather, Treatment, Follow-up planner or Q&A. Missing prerequisites run first automatically; "Team memory" shows what is already known; the raw JSON output is available for the research report. |
+| **Projects** | Group the leaves or plants of one field or experiment. Upload several photos at once; each gets its diagnosis and a label (e.g. "Plant 3, row 2"), and the project counts how many plants have each disease. Each project has its own CropAI chat (`/ask?project=…`, the chatbot sees every photo and diagnosis in the project) and its own agents dashboard (`/agents?project=…`: what each agent has done per photo, run one agent on one photo or on all of them). |
+| **History** | Every analysed photo, saved with its diagnosis in the local SQLite database (`backend/artifacts/runtime/chat.sqlite3`, git-ignored). Click a photo for its full saved diagnosis; edit labels; delete. Uploading the same photo again shows the saved diagnosis instantly (a "Re-analyse" button runs the model again). Saved photos can be picked on the Diagnose, Agents and project pages. Turn saving off with `STORE_UPLOADED_IMAGES=false`. |
 | **Research** | Runtime status and research tooling. |
 
 ## Demo mode vs real mode
@@ -284,6 +286,11 @@ All under `http://localhost:8000/api/v1` (interactive docs at `/docs`).
 | `POST /chat/sessions/{id}/reassess` | Link a new photo's diagnosis and compare it with the old one |
 | `POST /agents/{agent}/run` | Run one agent (`diagnose`, `retrieve_evidence`, `ask_farmer`, `assess_risk`, `recommend_treatment`, `plan_followup`, `answer_question`) |
 | `GET` / `DELETE /agents/memory/{session_id}` | See or clear what the agents remember for a diagnosis |
+| `POST /diagnose` form fields `project_id`, `note`; query `reanalyse=true` | File a photo under a project with a label; force a fresh analysis of a saved photo |
+| `GET /images` · `GET /images/{id}/file` · `PATCH` / `DELETE /images/{id}` | List, view, relabel/move or delete stored leaf photos |
+| `GET` / `POST /projects` · `GET` / `PATCH` / `DELETE /projects/{id}` | Projects: list, create, view (photos + diagnosis summary), rename, delete (photos are kept) |
+| `POST /chat/sessions` with `project_id` | A CropAI chat about a whole project |
+| `GET /agents/projects/{id}/memory` | Agents dashboard: what the agents already know for each photo of a project |
 | `GET /llm/status` | Which language model is configured |
 | `WS /realtime/ws` | Live-camera inference |
 
@@ -392,6 +399,8 @@ each kind of change belongs, the commands and the current state.
 - Do not commit datasets, checkpoints, vector stores, credentials, or downloaded documents.
 
 ## Further documentation
+
+**Writing the research paper or report?** Start with [docs/research_context.md](docs/research_context.md): the whole project in detail (dataset, model, pipeline, agents, experiments, limitations, references) with what may and may not be claimed.
 
 [Agent architecture](docs/agent_architecture.md) ·
 [Project structure](docs/project_structure.md) ·

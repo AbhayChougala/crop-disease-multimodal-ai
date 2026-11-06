@@ -191,7 +191,7 @@ footer { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1.1rem,4vw,4.5re
 .agents-run-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
 .agents-run-actions .button { flex: 1; }
 .agents-run .callout ol { margin: .4rem 0; padding-left: 1.2rem; }
-.agents-result { margin-top: 1rem; display: grid; gap: .9rem; }
+.agents-result { margin-top: 1rem; display: grid; gap: .9rem; scroll-margin-top: 96px; }
 .agents-result .tag { width: fit-content; }
 .agent-output-lead { font-size: 1.05rem; line-height: 1.6; margin: 0; }
 .agent-output-answer { white-space: pre-wrap; line-height: 1.6; margin: 0; }
@@ -211,3 +211,94 @@ footer { max-width: 1320px; margin: 0 auto; padding: 2rem clamp(1.1rem,4vw,4.5re
 .agent-weather dd { margin: 0; font-weight: 700; }
 .agent-raw pre { max-height: 320px; overflow: auto; background: #f5f6ef; padding: .8rem; border-radius: 10px; font-size: .78rem; }
 @media (max-width: 880px) { .agents-layout { grid-template-columns: 1fr; } .agents-run { position: static; } }
+
+/* History page: photos stored in the local database */
+.history-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; margin-bottom: 1.2rem; }
+.history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.history-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: grid; }
+.history-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #e9ece2; display: block; }
+.history-card div { padding: .8rem 1rem 1rem; display: grid; gap: .3rem; }
+.history-card small { color: var(--muted); overflow-wrap: anywhere; }
+.history-card .link-button { justify-self: start; color: var(--rust); }
+
+/* "Choose from saved photos" picker (Diagnose and Agents pages) */
+.saved-picker { display: grid; gap: .6rem; min-width: 0; }
+.saved-picker-panel { border: 1px solid var(--line); border-radius: 16px; background: var(--paper); padding: .8rem; max-height: 360px; overflow-y: auto; }
+.saved-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .6rem; }
+.saved-picker-item { appearance: none; border: 1px solid var(--line); border-radius: 12px; background: white; padding: 0; overflow: hidden; cursor: pointer; text-align: left; display: grid; color: var(--ink); font: inherit; }
+.saved-picker-item:hover:not(:disabled) { border-color: var(--green); }
+.saved-picker-item:disabled { opacity: .6; cursor: wait; }
+.saved-picker-item img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #e9ece2; }
+.saved-picker-item span { font-size: .78rem; font-weight: 700; padding: .35rem .5rem 0; line-height: 1.3; }
+.saved-picker-item small { font-size: .7rem; color: var(--muted); padding: 0 .5rem .45rem; }
+.agents-photo .saved-picker:has(.saved-picker-panel) { flex-basis: 100%; }
+
+/* Saved diagnoses, labels and projects */
+.upload-actions .button.secondary { color: white; box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); width: 100%; }
+.upload-fields { display: grid; gap: .6rem; margin: .9rem 0; }
+.upload-fields label { display: grid; gap: .3rem; font-size: .82rem; color: #bed0c8; }
+.upload-fields select, .upload-fields input { padding: .6rem .8rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: white; color: var(--ink); font: inherit; }
+.saved-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; margin: 1rem 0; padding: .9rem 1.1rem; border-radius: 14px; border: 1px solid var(--green); background: #edf2e7; color: var(--ink); line-height: 1.5; }
+.history-card > a { display: block; }
+.photo-label { padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: .85rem; color: var(--ink); background: white; min-width: 0; }
+.photo-card-actions { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; padding: 0 !important; }
+.photo-card-actions a { color: var(--green); font-weight: 700; font-size: .85rem; }
+.link-button.danger { color: var(--rust); }
+.project-create { display: grid; gap: .7rem; max-width: 640px; margin-bottom: 1.5rem; }
+.project-create h2 { margin: 0; }
+.project-create input, .project-title { padding: .7rem .9rem; border: 1px solid var(--line); border-radius: 12px; font: inherit; color: var(--ink); background: white; }
+.project-create .button { justify-self: start; }
+.project-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.project-tile { display: grid; gap: .4rem; text-decoration: none; color: var(--ink); transition: border-color .2s; }
+.project-tile:hover { border-color: var(--green); }
+.project-tile p { margin: 0; color: var(--muted); }
+.project-tile small { color: var(--muted); }
+.project-title { width: 100%; max-width: 760px; font-size: clamp(1.8rem, 3.5vw, 3rem); font-weight: 700; border-color: transparent; background: transparent; padding: .2rem .4rem; margin-left: -.4rem; }
+.project-title:hover, .project-title:focus { border-color: var(--line); background: white; }
+.project-upload { display: grid; gap: .8rem; margin-bottom: 1rem; }
+.project-upload h2 { margin: 0; }
+.project-check { display: flex; gap: .5rem; align-items: center; font-size: .9rem; color: var(--muted); }
+.project-summary { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0; }
+.project-summary .tag { background: #edf2e7; color: var(--green-dark); }
+.project-danger { margin-top: 2rem; }
+
+/* Project context in Ask CropAI and the Agents page */
+.project-links { margin-top: 1.2rem; }
+.project-context { display: grid; gap: .6rem; margin-bottom: .8rem; }
+.project-context a { color: var(--green); font-weight: 700; }
+.project-context .project-summary { margin: 0; }
+.project-context-strip { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .2rem; }
+.project-context-strip img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.project-dashboard { display: grid; gap: .8rem; margin-bottom: 1rem; }
+.project-dashboard .section-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.project-dashboard .section-heading h2 { margin: 0; }
+.project-dashboard .project-summary { margin: 0; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .7rem; }
+.dashboard-photo { appearance: none; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: .7rem; align-items: start; text-align: left; padding: .6rem; border: 1px solid var(--line); border-radius: 14px; background: white; color: var(--ink); cursor: pointer; font: inherit; }
+.dashboard-photo:hover { border-color: var(--green); }
+.dashboard-photo.selected { border-color: var(--green-dark); box-shadow: inset 0 0 0 1px var(--green-dark); background: #edf2e7; }
+.dashboard-photo img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; display: block; }
+.dashboard-photo-text { display: grid; gap: .25rem; min-width: 0; }
+.dashboard-photo-text strong { overflow-wrap: anywhere; }
+.dashboard-photo-text small { color: var(--muted); }
+.dashboard-checks { display: flex; flex-wrap: wrap; gap: .25rem; }
+.dashboard-checks .tag { font-size: .62rem; padding: .2rem .45rem; background: #eef0e8; color: var(--muted); }
+.dashboard-checks .tag.risk-low { background: #dcebd0; color: var(--green-dark); }
+.agents-selected { margin: 0 0 1rem; }
+.batch-row { border: 1px solid var(--line); border-radius: 12px; padding: .7rem 1rem; display: grid; gap: .6rem; }
+.batch-row summary { cursor: pointer; }
+
+/* Clear context pickers: "Run the agents on", "What should CropAI know about?" */
+.agents-project-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.5rem; margin-bottom: 1rem; }
+.choice-group { display: flex; flex-wrap: wrap; align-items: stretch; gap: .6rem; }
+.choice-label { flex-basis: 100%; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.choice { appearance: none; display: grid; gap: .15rem; text-align: left; padding: .7rem 1rem; border: 1px solid var(--line); border-radius: 14px; background: white; color: var(--ink); cursor: pointer; font: inherit; min-width: 200px; }
+.choice small { color: var(--muted); }
+.choice:hover { border-color: var(--green); }
+.choice.selected { border-color: var(--green-dark); box-shadow: inset 0 0 0 1px var(--green-dark); background: #edf2e7; }
+.field { display: grid; gap: .3rem; min-width: min(320px, 100%); }
+.field > span { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.field select, .chat-context-bar select { padding: .65rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink); font: inherit; max-width: 100%; }
+.chat-context-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: 0 0 .8rem; }
+.chat-context-bar label { font-weight: 700; font-size: .9rem; }
+.saved-tag { margin-left: .5rem; font-size: .6rem; padding: .15rem .45rem; vertical-align: middle; }

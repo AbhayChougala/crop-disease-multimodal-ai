@@ -63,6 +63,16 @@ On the Ask page in diagnosis mode, and in the diagnose page's chat panel, each r
 "Share location for weather" sends coordinates rounded to about 1 km. "Reassess with new photo"
 runs a new diagnosis and links it to the chat.
 
+## Saved results
+
+Every agent result is saved per photo (`agent_state_json`). Running an agent whose result is already
+saved returns it immediately (`reused=true`, 0 LLM calls); the Agents page labels the button "Show
+saved … result" and offers "Run … again" (`rerun=true`). A new message, answered questions, or a newly
+shared location for the risk agent always runs it. Re-running the Doctor clears the photo's risk,
+treatment and follow-up because they were based on the old diagnosis. In a project, "for all photos"
+reuses saved results unless the "run again" box is ticked, and the project chat receives each photo's
+saved findings.
+
 ## Agents page (run one agent at a time)
 
 `/agents` in the frontend analyses a photo once and then lets you run any single agent, without

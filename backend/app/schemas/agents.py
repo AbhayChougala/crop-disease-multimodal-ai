@@ -12,6 +12,8 @@ class AgentRunRequest(BaseModel):
     message: str = Field(default="", max_length=2000)
     preferred_language: Literal["en", "kn", "hi"] | None = None
     location: Location | None = None
+    # False (default): a result already saved for this photo is returned without re-running.
+    rerun: bool = False
 
 
 class AgentMemory(BaseModel):
@@ -39,3 +41,11 @@ class AgentRunResponse(BaseModel):
     is_mock: bool
     llm_calls: int
     total_ms: float
+    # True when the saved result for this photo was returned and nothing was re-run.
+    reused: bool = False
+
+
+class ProjectPhotoMemory(BaseModel):
+    diagnosis_id: str
+    # None when the photo's diagnosis can no longer be found (archive deleted).
+    memory: AgentMemory | None

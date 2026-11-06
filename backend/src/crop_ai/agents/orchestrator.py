@@ -390,10 +390,13 @@ class AgentOrchestrator:
         *,
         location: dict[str, float] | None = None,
         language: str = "en",
+        rerun: bool = False,
     ) -> list[AgentStep]:
         """Run one agent chosen by the user, plus any missing prerequisites (no orchestrator).
 
-        Results stay on `state`, so agents run one after another build on each other.
+        Results stay on `state`, so agents run one after another build on each other. A result
+        that is already saved for this photo is returned as-is (no LLM call) unless `rerun` is
+        set, the farmer sent new information, or new weather data can change it.
         """
         if action not in STEP_LABELS or action == "finish":
             raise ValueError(f"Unknown agent action: {action}")
@@ -408,10 +411,27 @@ class AgentOrchestrator:
             )
             state.pending_questions = []
 
+        saved = None if rerun or message or answered else saved_summary(action, state)
+        if saved is not None and not (action == "assess_risk" and location):
+            state.steps.append(
+                AgentStep(
+                    action=action,
+                    agent=STEP_LABELS[action],
+                    status="ok",
+                    summary=f"Saved result: {saved}",
+                    decided_by="user",
+                    reason="already worked out for this photo; reused without re-running",
+                )
+            )
+            return list(state.steps)
+
         llm = _BudgetedLLM(self.provider, state, self.max_llm_calls, language)
         request = message or DEFAULT_REQUEST
         needed_reason = f"needed before the {STEP_LABELS[action]}"
         for step in [*self.prerequisites(action, state, rediagnose=answered), action]:
+            if step == "diagnose":
+                # A new diagnosis makes plans built on the old one stale; they are redone on demand.
+                state.risk = state.treatment = state.follow_up = None
             started = time.perf_counter()
             status, summary = await self._run_action(step, llm, state, request, language)
             state.steps.append(
@@ -427,6 +447,24 @@ class AgentOrchestrator:
             )
         state.warnings += review(state)
         return list(state.steps)
+
+
+def saved_summary(action: str, state: AgentState) -> str | None:
+    """One line describing the saved result of `action`, or None if it has not run yet."""
+    if action == "retrieve_evidence" and state.passages:
+        return f"{len(state.passages)} fact-sheet passages"
+    if action == "diagnose" and state.diagnosis is not None:
+        top = state.diagnosis.candidates[0] if state.diagnosis.candidates else None
+        return f"most likely {top.disease} ({top.likelihood})" if top else state.diagnosis.summary
+    if action == "ask_farmer" and state.pending_questions:
+        return f"{len(state.pending_questions)} questions waiting for your answers"
+    if action == "assess_risk" and state.risk is not None:
+        return f"spread risk {state.risk.level} ({state.risk.score}/100)"
+    if action == "recommend_treatment" and state.treatment is not None:
+        return f"{len(state.treatment.items)} actions — {state.treatment.summary}"
+    if action == "plan_followup" and state.follow_up is not None:
+        return f"re-check in {state.follow_up.reinspect_in_days} days"
+    return None
 
 
 def passages_for_citations(state: AgentState):

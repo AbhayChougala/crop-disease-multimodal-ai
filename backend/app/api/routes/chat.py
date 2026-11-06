@@ -10,6 +10,7 @@ from app.schemas.chat import (
     SessionMessageRequest,
 )
 from app.services.chat_service import chat_service
+from app.services.image_store import image_store
 from app.services.session_store import ChatSession, session_store
 
 router = APIRouter(tags=["chat"])
@@ -20,6 +21,7 @@ def _serialize(session: ChatSession) -> ChatSessionResponse:
         session_id=session.session_id,
         mode=session.mode,
         diagnosis_id=session.diagnosis_id,
+        project_id=session.evidence.get("project_id") if session.mode == "general" else None,
         provider=session.provider,
         model=session.model,
         preferred_language=session.preferred_language,
@@ -51,9 +53,13 @@ async def create_session(request: CreateSessionRequest) -> ChatSessionResponse:
                 status_code=404, detail="Diagnosis session was not found or expired."
             )
         return _serialize(existing)
+    if request.project_id and image_store.project(request.project_id) is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
     return _serialize(
         session_store.create(
             mode="general",
+            # Only the project id is stored; its photos are read fresh on every message.
+            evidence={"project_id": request.project_id} if request.project_id else None,
             provider=settings.llm_provider,
             model=model,
             preferred_language=request.preferred_language,

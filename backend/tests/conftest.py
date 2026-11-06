@@ -5,6 +5,7 @@ offline demo configuration: tests never call a paid LLM API or depend on local i
 """
 
 import os
+import tempfile
 
 os.environ.update(
     {
@@ -14,5 +15,7 @@ os.environ.update(
         "OPENAI_API_KEY": "",
         "RAG_ENABLED": "false",
         "APP_ENV": "development",
+        # Chats and uploaded photos go to a throwaway database, never the developer's own.
+        "CHAT_DATABASE_PATH": os.path.join(tempfile.mkdtemp(prefix="crop-ai-"), "chat.sqlite3"),
     }
 )

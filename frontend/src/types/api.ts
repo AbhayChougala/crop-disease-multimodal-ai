@@ -6,6 +6,9 @@ export interface TopPrediction {
 export interface DiagnosisResponse {
   session_id: string;
   is_mock: boolean;
+  /** True when this photo was analysed before and its saved diagnosis was returned. */
+  from_saved?: boolean;
+  saved_at?: string | null;
   prediction: {
     crop: string | null;
     disease: string | null;
@@ -92,6 +95,8 @@ export interface ChatSession {
   session_id: string;
   mode: "general" | "diagnosis";
   diagnosis_id: string | null;
+  /** General chats about a project: its photos and diagnoses are the chatbot's context. */
+  project_id?: string | null;
   provider: string;
   model: string;
   preferred_language: "en" | "kn" | "hi";
@@ -182,4 +187,51 @@ export interface AgentRunResponse {
   is_mock: boolean;
   llm_calls: number;
   total_ms: number;
+  /** True when the result saved for this photo was returned and nothing was re-run. */
+  reused?: boolean;
+}
+
+/** A leaf photo stored in the backend's local SQLite database by POST /diagnose. */
+export interface StoredImage {
+  diagnosis_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  crop: string | null;
+  disease: string | null;
+  confidence: number | null;
+  is_mock: boolean;
+  created_at: string;
+  project_id: string | null;
+  /** Free-text label, e.g. "Plant 3, row 2". */
+  note: string;
+  image_url: string;
+}
+
+export interface StoredImageList {
+  enabled: boolean;
+  total: number;
+  images: StoredImage[];
+}
+
+export interface Project {
+  project_id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  image_count: number;
+}
+
+export interface ProjectDetail extends Project {
+  images: StoredImage[];
+  /** How many photos got each diagnosis, most common first. */
+  summary: { label: string; count: number }[];
+}
+
+/** What the agents already know about one photo of a project (project agents dashboard). */
+export interface ProjectPhotoMemory {
+  diagnosis_id: string;
+  memory: AgentMemory | null;
 }

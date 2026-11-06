@@ -113,6 +113,9 @@ class DiagnosisResponse(BaseModel):
     timings_ms: Timings
     runtime: dict[str, str | bool]
     warnings: list[str]
+    # Set when this photo was analysed before and the stored diagnosis is returned unchanged.
+    from_saved: bool = False
+    saved_at: str | None = None
 
 
 class PreprocessPreviewResponse(BaseModel):

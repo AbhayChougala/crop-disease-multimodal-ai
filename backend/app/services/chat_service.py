@@ -17,6 +17,7 @@ from app.schemas.chat import (
 from app.services.agent_service import REASSESS_MESSAGE, agent_service
 from app.services.knowledge_service import get_knowledge_service
 from app.services.llm_service import get_llm_provider
+from app.services.project_context import project_evidence, project_search_terms
 from app.services.session_store import ChatSession, session_store
 from crop_ai.agents.orchestrator import TurnResult
 from crop_ai.agents.state import AgentState
@@ -153,10 +154,21 @@ class ChatService:
         passages: list[RetrievedPassage] = []
         warnings: list[str] = []
 
+        project = (
+            project_evidence(session.evidence["project_id"])
+            if session.mode == "general" and session.evidence.get("project_id")
+            else None
+        )
+        if session.mode == "general" and session.evidence.get("project_id") and project is None:
+            warnings.append("The project linked to this chat was deleted; answering without it.")
+        query = message
+        if project and project_search_terms(project):
+            query = f"{message} ({project_search_terms(project)})"
+
         retrieval_started = time.perf_counter()
         try:
             passages = knowledge.search(
-                message,
+                query,
                 crop=session.evidence.get("predicted_crop")
                 if session.mode == "diagnosis"
                 else None,
@@ -177,6 +189,8 @@ class ChatService:
         evidence: dict[str, Any] = (
             session.evidence
             if session.mode == "diagnosis"
+            else project
+            if project is not None
             else {
                 "diagnosis_id": None,
                 "model_mode": "UNAVAILABLE",

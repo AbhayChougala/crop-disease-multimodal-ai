@@ -105,6 +105,21 @@ python scripts/check_llm.py                           # one real LLM call throug
   budgets and a rule-based fallback; every reply carries an `agent_trace`. The `/agents` page runs
   any single agent directly (`POST /api/v1/agents/{agent}/run`). See `docs/agent_architecture.md`. Settings: `AGENTS_ENABLED`, `AGENT_MAX_STEPS`,
   `AGENT_MAX_LLM_CALLS`, `AGENT_ORCHESTRATOR_MODEL`, `WEATHER_ENABLED`.
+- Photos and projects: `POST /diagnose` saves each upload (bytes, prediction, label, project) in the
+  `diagnosis_images` table of the local SQLite database (`CHAT_DATABASE_PATH`, git-ignored) via
+  `app/services/image_store.py`. Re-uploading an identical photo (same SHA-256) returns its archived
+  diagnosis (`from_saved=true`) if the same model/checkpoint is loaded; `?reanalyse=true` forces a new
+  run. The `projects` table groups photos (`/projects` pages); `/history` lists all photos.
+  Setting: `STORE_UPLOADED_IMAGES`. Integration tests number each synthetic photo so they stay unique.
+- Project context (`app/services/project_context.py`): a general chat created with `project_id` sends
+  the project's photos, labels and stored diagnoses as evidence (rebuilt every message) and adds the
+  project's diseases to the retrieval query. `/agents?project=<id>` shows a per-photo agents dashboard
+  (`GET /agents/projects/{id}/memory`) with "run on all photos". Expired chat sessions are rebuilt
+  from the diagnosis archive by `ensure_diagnosis_session`.
+- Saved agent results: `run_agent` returns a result already saved for a photo (`reused=true`, no LLM
+  call) unless `rerun=true`, a message/answer is sent, or a location is newly shared for risk.
+  Re-running the Doctor clears that photo's risk, treatment and follow-up (they depended on it).
+  Project chat evidence includes each photo's saved `agent_findings`.
 - General chat: retrieve passages, then the LLM returns a structured `GroundedAdvisory`, citation IDs are
   intersected with retrieved IDs, and `format_advisory` renders the text. The LLM explains the
   classifier's result; it never classifies. Real providers are never called when retrieval is empty.
@@ -128,5 +143,5 @@ python scripts/check_llm.py                           # one real LLM call throug
 
 ## Further docs
 
-`docs/project_structure.md` (full folder table), `docs/architecture.md`, `docs/agent_architecture.md`, `docs/rag_guide.md`,
+`docs/research_context.md` (full project detail for papers/reports), `docs/project_structure.md` (full folder table), `docs/architecture.md`, `docs/agent_architecture.md`, `docs/rag_guide.md`,
 `docs/llm_setup.md`, `docs/research_protocol.md`, `docs/gpu_handoff.md`, `README.md` (setup).

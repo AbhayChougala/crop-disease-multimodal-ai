@@ -1,14 +1,21 @@
 import { type FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
-import { createChatSession, deleteChatSession, diagnoseImage, reassessSession, sendSessionMessage } from "../api/client";
+import { createChatSession, deleteChatSession, diagnoseImage, listProjects, loadProject, reassessSession, sendSessionMessage, storedImageUrl } from "../api/client";
 import { AgentInsights, agentMetadata } from "../components/AgentInsights";
-import type { ChatCitation, ChatMessage, ChatResponse, ChatSession, GeoLocation } from "../types/api";
+import type { ChatCitation, ChatMessage, ChatResponse, ChatSession, GeoLocation, Project, ProjectDetail } from "../types/api";
 
 const starterQuestions = [
   "What evidence should I collect before asking an expert?",
   "How should I interpret an uncertain prediction?",
   "What image quality issues can affect a crop diagnosis?",
+];
+
+const projectQuestions = [
+  "Summarise the health of this project.",
+  "Which plants need attention first, and why?",
+  "What should I do this week for the affected plants?",
+  "How do I stop the disease spreading to the healthy plants?",
 ];
 
 function responseMessage(response: ChatResponse): ChatMessage {
@@ -23,8 +30,12 @@ function responseMessage(response: ChatResponse): ChatMessage {
 }
 
 export function AskCropAIPage() {
-  const [parameters] = useSearchParams();
+  const [parameters, setParameters] = useSearchParams();
   const diagnosisId = parameters.get("diagnosis") ?? undefined;
+  // A project chat: the chatbot sees every photo in the project and its stored diagnosis.
+  const projectId = diagnosisId ? undefined : parameters.get("project") ?? undefined;
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [project, setProject] = useState<ProjectDetail | null>(null);
   const [session, setSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [citations, setCitations] = useState<ChatCitation[]>([]);
@@ -55,10 +66,22 @@ export function AskCropAIPage() {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
+  useEffect(() => { listProjects().then(setProjects).catch(() => setProjects([])); }, []);
+
+  useEffect(() => {
+    setProject(null);
+    if (projectId) loadProject(projectId).then(setProject).catch(() => setProject(null));
+  }, [projectId]);
+
+  function chooseContext(value: string) {
+    setMessages([]); setCitations([]); setMetadata(null); setWarnings([]); setError(null);
+    setParameters(value ? { project: value } : {});
+  }
+
   useEffect(() => {
     let active = true;
     setLoading(true);
-    createChatSession(diagnosisId ? "diagnosis" : "general", diagnosisId, language)
+    createChatSession(diagnosisId ? "diagnosis" : "general", diagnosisId, language, projectId)
       .then((created) => {
         if (!active) return;
         setSession(created);
@@ -73,9 +96,14 @@ export function AskCropAIPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [diagnosisId]);
+  }, [diagnosisId, projectId]);
 
-  const modeLabel = session?.mode === "diagnosis" ? "Diagnosis-aware" : "General crop Q&A";
+  const modeLabel = session?.mode === "diagnosis"
+    ? "Diagnosis-aware"
+    : session?.project_id
+      ? `Project · ${project?.name ?? projects.find((item) => item.project_id === session.project_id)?.name ?? "…"}`
+      : "General crop Q&A";
+  const starters = session?.project_id ? projectQuestions : starterQuestions;
   const latestAssistant = useMemo(
     () => [...messages].reverse().find((item) => item.role === "assistant"),
     [messages],
@@ -172,7 +200,7 @@ export function AskCropAIPage() {
     setWarnings([]);
     setError(null);
     try {
-      const created = await createChatSession("general", undefined, language);
+      const created = await createChatSession("general", undefined, language, projectId);
       setSession(created);
     } catch (problem) {
       setError(problem instanceof Error ? problem.message : "Could not reset chat.");
@@ -192,12 +220,43 @@ export function AskCropAIPage() {
             <select id="ask-language" value={language} onChange={(event) => setLanguage(event.target.value as "en" | "kn" | "hi")}><option value="en">English</option><option value="kn">ಕನ್ನಡ</option><option value="hi">हिन्दी</option></select>
             <button className="button secondary" type="button" onClick={resetChat}>New chat</button>
           </div>
+          {!diagnosisId && (
+            <div className="chat-context-bar">
+              <label htmlFor="ask-project">What should CropAI know about?</label>
+              <select id="ask-project" value={projectId ?? ""} onChange={(event) => chooseContext(event.target.value)}>
+                <option value="">Nothing — general crop questions</option>
+                {projects.length > 0 && (
+                  <optgroup label="One of my projects (CropAI sees its photos and saved diagnoses)">
+                    {projects.map((item) => <option key={item.project_id} value={item.project_id}>{item.name} · {item.image_count} photo{item.image_count === 1 ? "" : "s"}</option>)}
+                  </optgroup>
+                )}
+              </select>
+              {projects.length === 0 && <small className="muted">Create a project to chat about your own plants.</small>}
+            </div>
+          )}
+          {session?.project_id && project && (
+            <div className="callout project-context">
+              <div>
+                <strong>{project.name}</strong> — CropAI can see all {project.image_count} photo{project.image_count === 1 ? "" : "s"} in this project and their diagnoses, and answers about the project as a whole.
+                {" "}<Link to={`/projects/${project.project_id}`}>Open project</Link> · <Link to={`/agents?project=${project.project_id}`}>Agents dashboard</Link>
+              </div>
+              <div className="project-context-strip">
+                {project.images.slice(0, 12).map((image) => (
+                  <Link key={image.diagnosis_id} to={`/history/${image.diagnosis_id}`} title={`${image.note || image.filename}: ${image.crop ?? ""} ${image.disease ?? ""}`}>
+                    <img src={storedImageUrl(image.diagnosis_id)} alt={image.note || image.filename} />
+                  </Link>
+                ))}
+              </div>
+              <div className="project-summary">{project.summary.map((item) => <span key={item.label} className="tag">{item.count} × {item.label}</span>)}</div>
+              {project.image_count === 0 && <small>This project has no photos yet; add some on the project page.</small>}
+            </div>
+          )}
           {session?.mode === "diagnosis" && <div className="callout">Visual evidence from diagnosis {session.diagnosis_id?.slice(0, 8)} is attached. A team of CropAI agents diagnoses, checks trusted fact sheets, assesses risk and plans treatment and follow-up.</div>}
           {session?.mode === "diagnosis" && <div className="agent-toolbar"><button type="button" className="button secondary" onClick={shareLocation} disabled={Boolean(location)}>{location ? "Location shared ✓" : "Share location for weather"}</button><button type="button" className="button secondary" onClick={() => photoRef.current?.click()} disabled={sending}>Reassess with new photo</button><input ref={photoRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void reassessWithPhoto(file); }} />{locationNote && <small className="muted">{locationNote}</small>}</div>}
           <div className="conversation ask-thread" aria-live="polite" ref={threadRef}>
-            {!loading && messages.length === 0 && <div className="empty-chat"><strong>Ask a focused crop-health question.</strong><p>Include the crop, visible symptoms, location context, and uncertainty. Do not include secrets or personal information.</p><div className="suggestion-row">{starterQuestions.map((question) => <button key={question} type="button" disabled={!session || sending} onClick={() => submit(undefined, question)}>{question}</button>)}</div></div>}
+            {!loading && messages.length === 0 && <div className="empty-chat"><strong>Ask a focused crop-health question.</strong><p>Include the crop, visible symptoms, location context, and uncertainty. Do not include secrets or personal information.</p><div className="suggestion-row">{starters.map((question) => <button key={question} type="button" disabled={!session || sending} onClick={() => submit(undefined, question)}>{question}</button>)}</div></div>}
             {messages.map((item) => <article className={`message ${item.role}`} key={item.message_id}><div className="message-heading"><strong>{item.role === "user" ? "You" : "CropAI"}</strong><time>{new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div><p>{item.content}</p>{item.role === "assistant" && <AgentInsights metadata={item.metadata} onPickQuestion={pickQuestion} />}{item.citations.length > 0 && <button type="button" className="citation-link" onClick={() => setCitations(item.citations)}>{item.citations.length} cited passage{item.citations.length === 1 ? "" : "s"}</button>}{item.role === "assistant" && <button type="button" className="copy-link" onClick={() => navigator.clipboard.writeText(item.content)}>Copy</button>}</article>)}
-            {sending && <div className="message assistant loading-message">{session?.mode === "diagnosis" ? "CropAI agents are working: checking evidence, diagnosing, assessing risk and planning…" : "Retrieving evidence and preparing a cautious response…"}</div>}
+            {sending && <div className="message assistant loading-message">{session?.mode === "diagnosis" ? "CropAI agents are working: checking evidence, diagnosing, assessing risk and planning…" : session?.project_id ? "Reviewing the project's photos and diagnoses, and retrieving evidence…" : "Retrieving evidence and preparing a cautious response…"}</div>}
           </div>
           <form className="ask-form" onSubmit={submit}><label className="sr-only" htmlFor="ask-message">Question</label><textarea id="ask-message" ref={inputRef} rows={2} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (draft.trim() && !sending && session) void submit(); } }} maxLength={2000} placeholder="Ask about crop symptoms, uncertainty, prevention evidence… (Enter to send, Shift+Enter for a new line)" /><button className="button primary" disabled={!draft.trim() || sending || !session}>Send</button>{draft.length > 1500 && <small className="char-count">{draft.length}/2000</small>}</form>
           {error && <div className="chat-error" role="alert">{error}{lastQuestion && <button type="button" onClick={() => submit(undefined, lastQuestion)}>Retry</button>}</div>}

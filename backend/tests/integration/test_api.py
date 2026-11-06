@@ -1,3 +1,5 @@
+import itertools
+
 import cv2
 import numpy as np
 from fastapi.testclient import TestClient
@@ -5,10 +7,14 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
+_photo_counter = itertools.count()
 
 
 def _image_bytes() -> bytes:
+    """A synthetic leaf; each call is numbered so it is a new photo, not a saved one."""
     image = np.full((180, 240, 3), 245, dtype=np.uint8)
+    number = str(next(_photo_counter))
+    cv2.putText(image, number, (5, 175), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0))
     cv2.ellipse(image, (120, 90), (70, 45), -20, 0, 360, (35, 145, 45), -1)
     cv2.circle(image, (115, 85), 15, (35, 90, 150), -1)
     ok, encoded = cv2.imencode(".jpg", image)
@@ -211,3 +217,147 @@ def test_websocket_mock_inference() -> None:
     assert result["is_mock"] is True
     assert 0 <= result["confidence"] <= 1
     assert result["inference_ms"] >= 0
+
+
+def test_uploaded_images_are_stored_in_local_database() -> None:
+    data = _image_bytes()
+    diagnosis = client.post("/api/v1/diagnose", files={"file": ("my leaf.jpg", data, "image/jpeg")})
+    diagnosis_id = diagnosis.json()["session_id"]
+    assert diagnosis.json()["from_saved"] is False
+
+    listing = client.get("/api/v1/images").json()
+    stored = next(item for item in listing["images"] if item["diagnosis_id"] == diagnosis_id)
+    assert listing["enabled"] is True
+    assert stored["filename"] == "my leaf.jpg"
+    assert stored["size_bytes"] == len(data)
+    assert stored["is_mock"] is True
+
+    image = client.get(stored["image_url"])
+    assert image.status_code == 200
+    assert image.headers["content-type"] == "image/jpeg"
+    assert image.content == data
+
+    assert client.delete(f"/api/v1/images/{diagnosis_id}").status_code == 204
+    assert client.get(stored["image_url"]).status_code == 404
+    assert client.delete(f"/api/v1/images/{diagnosis_id}").status_code == 404
+
+
+def test_same_photo_returns_saved_diagnosis_unless_reanalysed() -> None:
+    data = _image_bytes()
+    first = client.post("/api/v1/diagnose", files={"file": ("a.jpg", data, "image/jpeg")}).json()
+    again = client.post("/api/v1/diagnose", files={"file": ("b.jpg", data, "image/jpeg")}).json()
+
+    assert again["from_saved"] is True and again["saved_at"]
+    assert again["session_id"] == first["session_id"]
+    assert again["prediction"] == first["prediction"]
+
+    fresh = client.post(
+        "/api/v1/diagnose?reanalyse=true", files={"file": ("c.jpg", data, "image/jpeg")}
+    ).json()
+    assert fresh["from_saved"] is False
+    assert fresh["session_id"] != first["session_id"]
+    images = client.get("/api/v1/images").json()["images"]
+    rows = [item for item in images if item["sha256"] == images[0]["sha256"]]
+    # One row per photo: the newest diagnosis, keeping the original filename.
+    assert [(row["diagnosis_id"], row["filename"]) for row in rows] == [
+        (fresh["session_id"], "a.jpg")
+    ]
+
+
+def test_projects_group_photos_with_their_diagnoses() -> None:
+    project = client.post("/api/v1/projects", json={"name": "North field tomatoes"}).json()
+    project_id = project["project_id"]
+    assert project["image_count"] == 0
+
+    ids = []
+    for plant in ("Plant 1", "Plant 2"):
+        response = client.post(
+            "/api/v1/diagnose",
+            files={"file": ("leaf.jpg", _image_bytes(), "image/jpeg")},
+            data={"project_id": project_id, "note": plant},
+        )
+        ids.append(response.json()["session_id"])
+
+    detail = client.get(f"/api/v1/projects/{project_id}").json()
+    assert detail["image_count"] == 2
+    assert sorted(item["note"] for item in detail["images"]) == ["Plant 1", "Plant 2"]
+    assert sum(item["count"] for item in detail["summary"]) == 2
+    assert [p["project_id"] for p in client.get("/api/v1/projects").json()].count(project_id) == 1
+
+    relabel = client.patch(f"/api/v1/images/{ids[0]}", json={"note": "Plant 1 (row 3)"})
+    assert relabel.json()["note"] == "Plant 1 (row 3)"
+    removed = client.patch(f"/api/v1/images/{ids[1]}", json={"project_id": None})
+    assert removed.json()["project_id"] is None
+    assert client.get(f"/api/v1/projects/{project_id}").json()["image_count"] == 1
+
+    unknown = client.post(
+        "/api/v1/diagnose",
+        files={"file": ("leaf.jpg", _image_bytes(), "image/jpeg")},
+        data={"project_id": "missing"},
+    )
+    assert unknown.status_code == 404
+
+    assert client.delete(f"/api/v1/projects/{project_id}").status_code == 204
+    assert client.get(f"/api/v1/projects/{project_id}").status_code == 404
+    # Deleting a project keeps its photos.
+    assert client.get(f"/api/v1/images/{ids[0]}/file").status_code == 200
+
+
+def test_project_chat_and_project_agent_dashboard() -> None:
+    from app.services.chat_service import project_evidence
+    from app.services.session_store import session_store
+
+    project_id = client.post("/api/v1/projects", json={"name": "Greenhouse 2"}).json()[
+        "project_id"
+    ]
+    ids = [
+        client.post(
+            "/api/v1/diagnose",
+            files={"file": ("leaf.jpg", _image_bytes(), "image/jpeg")},
+            data={"project_id": project_id, "note": f"Plant {n}"},
+        ).json()["session_id"]
+        for n in (1, 2)
+    ]
+
+    evidence = project_evidence(project_id)
+    assert evidence["context_type"] == "project" and evidence["photo_count"] == 2
+    assert sorted(photo["label"] for photo in evidence["photos"]) == ["Plant 1", "Plant 2"]
+
+    session = client.post(
+        "/api/v1/chat/sessions", json={"mode": "general", "project_id": project_id}
+    ).json()
+    assert session["project_id"] == project_id
+    reply = client.post(
+        f"/api/v1/chat/sessions/{session['session_id']}/messages",
+        json={"message": "Which plants need attention first?"},
+    )
+    assert reply.status_code == 200
+    assert client.post(
+        "/api/v1/chat/sessions", json={"mode": "general", "project_id": "missing"}
+    ).status_code == 404
+
+    client.post("/api/v1/agents/diagnose/run", json={"session_id": ids[0]})
+    dashboard = {
+        row["diagnosis_id"]: row["memory"]
+        for row in client.get(f"/api/v1/agents/projects/{project_id}/memory").json()
+    }
+    assert dashboard[ids[0]]["has_diagnosis"] is True
+    assert dashboard[ids[1]]["has_diagnosis"] is False
+
+    again = client.post("/api/v1/agents/diagnose/run", json={"session_id": ids[0]}).json()
+    assert again["reused"] is True and again["llm_calls"] == 0
+    assert again["output"]["candidates"]
+    forced = client.post(
+        "/api/v1/agents/diagnose/run", json={"session_id": ids[0], "rerun": True}
+    ).json()
+    assert forced["reused"] is False
+    # The project chat sees the agents' saved findings for each photo.
+    photos = {photo["label"]: photo for photo in project_evidence(project_id)["photos"]}
+    assert photos["Plant 1"]["agent_findings"]["doctor"]["most_likely"]
+    assert photos["Plant 2"]["agent_findings"] is None
+
+    # An expired chat session is rebuilt from the diagnosis archive for the agents.
+    session_store.delete(ids[1])
+    run = client.post("/api/v1/agents/plan_followup/run", json={"session_id": ids[1]})
+    assert run.status_code == 200
+    assert run.json()["output"]["reinspect_in_days"] >= 1

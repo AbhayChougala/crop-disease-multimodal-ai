@@ -82,12 +82,13 @@ class AgentService:
         *,
         location: dict[str, float] | None = None,
         language: str = "en",
+        rerun: bool = False,
     ) -> tuple[list[AgentStep], AgentState, bool]:
         """Run one agent from the Agents page; returns (steps, state, is_mock)."""
         orchestrator, _ = self._orchestrator()
         state = self.load_state(session)
         steps = await orchestrator.run_agent(
-            state, action, message, location=location, language=language
+            state, action, message, location=location, language=language, rerun=rerun
         )
         session_store.put_agent_state(session.session_id, state.model_dump(mode="json"))
         return steps, state, not orchestrator.use_llm

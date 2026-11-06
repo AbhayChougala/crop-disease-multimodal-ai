@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     chat_max_history_messages: int = Field(default=12, ge=2, le=100)
     chat_retention_days: int = Field(default=30, ge=1, le=3650)
     chat_database_path: Path = Path("artifacts/runtime/chat.sqlite3")
+    # Keep every uploaded leaf photo (with its prediction) in the local SQLite database above.
+    store_uploaded_images: bool = True
     report_enable_pdf: bool = True
     max_upload_mb: int = Field(default=10, ge=1, le=50)
 

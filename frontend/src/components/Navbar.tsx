@@ -6,6 +6,8 @@ const links = [
   ["/live", "Live Camera"],
   ["/ask", "Ask CropAI"],
   ["/agents", "Agents"],
+  ["/projects", "Projects"],
+  ["/history", "History"],
   ["/research", "Research"],
   ["/about", "About"],
 ];

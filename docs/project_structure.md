@@ -89,7 +89,7 @@ Framework-independent. It must not import FastAPI or `app`.
 | Path | Contains | Put new… here |
 |---|---|---|
 | `src/main.tsx`, `src/App.tsx` | Entry point and routes | Register a new page route |
-| `src/pages/` | `HomePage`, `DiagnosePage`, `AskCropAIPage`, `AgentsPage` (run one agent at a time), `LiveCameraPage`, `ResearchPage`, `AboutPage` | New full page |
+| `src/pages/` | `HomePage`, `DiagnosePage`, `AskCropAIPage`, `AgentsPage` (run one agent at a time), `HistoryPage` + `SavedDiagnosisPage` (stored photos), `ProjectsPage` + `ProjectPage`, `LiveCameraPage`, `ResearchPage`, `AboutPage` | New full page |
 | `src/components/` | `ChatPanel`, `AgentInsights`, `AgentOutput`, `DiagnosisResults`, `DemoBanner`, `Navbar` | Reusable UI pieces |
 | `src/api/client.ts` | All backend calls (REST and WebSocket URLs) | New API call; don't call `fetch` from components |
 | `src/types/api.ts` | TypeScript types mirroring backend schemas | Keep in sync with `backend/app/schemas/` |

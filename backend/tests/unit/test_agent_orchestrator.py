@@ -278,6 +278,28 @@ def test_single_agent_records_answers_and_rediagnoses() -> None:
     assert [step.action for step in steps] == ["diagnose", "recommend_treatment"]
 
 
+def test_single_agent_reuses_saved_results_unless_rerun() -> None:
+    provider = FakeProvider([], _outputs())
+    orchestrator = AgentOrchestrator(provider, _search)
+    state = AgentState(evidence=EVIDENCE)
+    asyncio.run(orchestrator.run_agent(state, "plan_followup"))
+    calls = len(provider.calls)
+
+    saved = asyncio.run(orchestrator.run_agent(state, "plan_followup"))
+    assert len(provider.calls) == calls  # nothing was re-run
+    assert [step.action for step in saved] == ["plan_followup"]
+    assert saved[0].summary.startswith("Saved result: re-check in")
+    saved_doctor = asyncio.run(orchestrator.run_agent(state, "diagnose"))
+    assert saved_doctor[0].summary.startswith("Saved result: most likely")
+    assert len(provider.calls) == calls
+
+    fresh = asyncio.run(orchestrator.run_agent(state, "diagnose", rerun=True))
+    assert len(provider.calls) > calls
+    assert not fresh[-1].summary.startswith("Saved result")
+    # A new diagnosis makes the old follow-up plan stale.
+    assert state.follow_up is None
+
+
 def test_single_agent_rejects_finish() -> None:
     orchestrator = AgentOrchestrator(FakeProvider([], _outputs()), _search)
     with pytest.raises(ValueError):

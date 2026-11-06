@@ -8,11 +8,18 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Response, status
 
-from app.schemas.agents import AgentMemory, AgentRunRequest, AgentRunResponse
+from app.schemas.agents import (
+    AgentMemory,
+    AgentRunRequest,
+    AgentRunResponse,
+    ProjectPhotoMemory,
+)
 from app.schemas.chat import AgentStepOut
 from app.services.agent_service import agent_service
 from app.services.chat_service import _citation
-from app.services.session_store import ChatSession, session_store
+from app.services.image_store import image_store
+from app.services.project_context import ensure_diagnosis_session
+from app.services.session_store import ChatSession
 from crop_ai.agents.state import AgentState, DirectAgent
 from crop_ai.agents.tools import passages_of
 
@@ -20,7 +27,7 @@ router = APIRouter(tags=["agents"])
 
 
 def _diagnosis_session(session_id: str) -> ChatSession:
-    session = session_store.get(session_id)
+    session = ensure_diagnosis_session(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Diagnosis was not found or expired.")
     if session.mode != "diagnosis" or not session.evidence:
@@ -94,6 +101,7 @@ async def run_agent(agent: DirectAgent, request: AgentRunRequest) -> AgentRunRes
         request.message.strip(),
         location=request.location.model_dump() if request.location else None,
         language=request.preferred_language or session.preferred_language,
+        rerun=request.rerun,
     )
     output = _output(agent, state)
     by_id = {item.citation_id: item for item in passages_of(state)}
@@ -109,6 +117,7 @@ async def run_agent(agent: DirectAgent, request: AgentRunRequest) -> AgentRunRes
         is_mock=is_mock,
         llm_calls=state.llm_calls,
         total_ms=round((time.perf_counter() - started) * 1000, 1),
+        reused=len(steps) == 1 and steps[0].reason.startswith("already worked out"),
     )
 
 
@@ -121,3 +130,20 @@ async def agent_memory(session_id: str) -> AgentMemory:
 async def reset_agent_memory(session_id: str) -> Response:
     agent_service.reset(_diagnosis_session(session_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/agents/projects/{project_id}/memory", response_model=list[ProjectPhotoMemory])
+async def project_agent_memory(project_id: str) -> list[ProjectPhotoMemory]:
+    """What the agents already know about each photo in a project (the project dashboard)."""
+    if image_store.project(project_id) is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    rows = []
+    for record in image_store.list(limit=1000, project_id=project_id):
+        session = ensure_diagnosis_session(record.diagnosis_id)
+        memory = (
+            _memory(agent_service.load_state(session))
+            if session is not None and session.mode == "diagnosis" and session.evidence
+            else None
+        )
+        rows.append(ProjectPhotoMemory(diagnosis_id=record.diagnosis_id, memory=memory))
+    return rows
